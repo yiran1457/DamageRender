@@ -9,6 +9,7 @@ public class ClientConfig {
 
     public static final ForgeConfigSpec.ConfigValue<Integer> SHOW_DISTANCE;
     public static final ForgeConfigSpec.ConfigValue<Integer> MAX_SHOW_RENDER;
+    public static final ForgeConfigSpec.ConfigValue<Double> MIN_VALUE_DISPLAY;
     static {
         //BUILDER.push("Client Setting");
 
@@ -18,6 +19,9 @@ public class ClientConfig {
         MAX_SHOW_RENDER = BUILDER
                 .comment("最多渲染的数字量")
                 .define("maxShowRender", 128);
+        MIN_VALUE_DISPLAY = BUILDER
+                .comment("启用渲染的最小数值")
+                .define("minValueDisplay", 0.5);
         //BUILDER.pop();
 
         SPEC = BUILDER.build();

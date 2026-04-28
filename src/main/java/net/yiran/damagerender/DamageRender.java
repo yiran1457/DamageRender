@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonWriter;
 import com.mojang.serialization.JsonOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -15,12 +16,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.simple.SimpleChannel;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
 import net.yiran.damagerender.client.ClientEventHandler;
 import net.yiran.damagerender.data.DamageInfoPacket;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 import net.yiran.damagerender.server.ServerEventHandler;
-import se.mickelus.mutil.network.PacketHandler;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -31,7 +33,8 @@ import java.nio.file.Path;
 public class DamageRender {
     public static final String MODID = "damagerender";
     public static Path DAMAGE_COLOR_PATH = FMLPaths.CONFIGDIR.get().resolve("damagerender-damage-color.json");
-    public static PacketHandler NETWORK;
+    public static SimpleChannel NETWORK;
+    private static final String PROTOCOL_VERSION = "1";
 
     public static String getHexColor(int color) {
         return "#" + Integer.toHexString(color).substring(2).toUpperCase();
@@ -39,7 +42,12 @@ public class DamageRender {
 
     @SuppressWarnings("removal")
     public DamageRender() throws IOException {
-        NETWORK = new PacketHandler("damagerender", "main", "1");
+        NETWORK = NetworkRegistry.newSimpleChannel(
+                new ResourceLocation(MODID, "main"),
+                () -> PROTOCOL_VERSION,
+                PROTOCOL_VERSION::equals,
+                PROTOCOL_VERSION::equals
+        );
         MinecraftForge.EVENT_BUS.register(ServerEventHandler.class);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             MinecraftForge.EVENT_BUS.register(ClientEventHandler.class);
@@ -61,7 +69,7 @@ public class DamageRender {
             json.addProperty("inFire", getHexColor(-65536));
             json.addProperty("onFire", getHexColor(-65536));
             json.addProperty("wither", getHexColor(-14221237));
-            json.addProperty("heal", getHexColor(0x00ff00));
+            json.addProperty("heal", "#00FF00");
 
             try (Writer fileWriter = Files.newBufferedWriter(DAMAGE_COLOR_PATH)) {
                 JsonWriter jsonWriter = new JsonWriter(fileWriter);
@@ -81,8 +89,8 @@ public class DamageRender {
     }
 
     public void onCommonSetup(FMLCommonSetupEvent event) {
-        NETWORK.registerPacket(DamageInfoPacket.class, DamageInfoPacket::new);
-        NETWORK.registerPacket(UpdateConfigPacket.class, UpdateConfigPacket::new);
+        NETWORK.registerMessage(0, DamageInfoPacket.class, DamageInfoPacket::toBytes, DamageInfoPacket::newInstance, DamageInfoPacket::handle);
+        NETWORK.registerMessage(1, UpdateConfigPacket.class, UpdateConfigPacket::toBytes, UpdateConfigPacket::newInstance, UpdateConfigPacket::handle);
     }
 
     public void onClientSetup(FMLClientSetupEvent event) {

@@ -1,11 +1,12 @@
 package net.yiran.damagerender.data;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.network.NetworkEvent;
 import net.yiran.damagerender.server.ServerDamageInfoManager;
-import se.mickelus.mutil.network.AbstractPacket;
 
-public class UpdateConfigPacket extends AbstractPacket {
+import java.util.function.Supplier;
+
+public class UpdateConfigPacket {
     public int distance;
 
     public UpdateConfigPacket() {
@@ -16,18 +17,19 @@ public class UpdateConfigPacket extends AbstractPacket {
         this.distance = distance;
     }
 
-    @Override
-    public void toBytes(FriendlyByteBuf friendlyByteBuf) {
-        friendlyByteBuf.writeInt(distance);
+    public static void toBytes(UpdateConfigPacket packet, FriendlyByteBuf buf) {
+        buf.writeInt(packet.distance);
     }
 
-    @Override
-    public void fromBytes(FriendlyByteBuf friendlyByteBuf) {
-        this.distance = friendlyByteBuf.readInt();
+    public static UpdateConfigPacket newInstance(FriendlyByteBuf buf) {
+        return new UpdateConfigPacket(buf.readInt());
     }
 
-    @Override
-    public void handle(Player player) {
-        ServerDamageInfoManager.instance.addDistanceConfig(player.getStringUUID(), distance);
+    public static void handle(UpdateConfigPacket packet, Supplier<NetworkEvent.Context> ctxSupplier) {
+        NetworkEvent.Context ctx = ctxSupplier.get();
+        ctx.enqueueWork(() -> {
+            ServerDamageInfoManager.instance.addDistanceConfig(ctx.getSender().getStringUUID(), packet.distance);
+        });
+        ctx.setPacketHandled(true);
     }
 }

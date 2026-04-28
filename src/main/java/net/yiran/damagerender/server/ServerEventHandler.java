@@ -5,6 +5,7 @@ import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.DamageInfoData;
@@ -29,7 +30,7 @@ public class ServerEventHandler {
                             pos.add(0, event.getEntity().getBbHeight(), 0),
                             event.getAmount()
                     );
-                    DamageRender.NETWORK.sendTo(new DamageInfoPacket(data), serverPlayer);
+                    DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DamageInfoPacket(data));
                 });
     }
 
@@ -51,7 +52,7 @@ public class ServerEventHandler {
                             pos.add(0, event.getEntity().getBbHeight(), 0),
                             event.getAmount()
                     );
-                    DamageRender.NETWORK.sendTo(new DamageInfoPacket(data), serverPlayer);
+                    DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DamageInfoPacket(data));
                 });
     }
 

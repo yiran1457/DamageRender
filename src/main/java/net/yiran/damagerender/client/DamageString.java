@@ -6,93 +6,146 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.joml.Quaternionf;
 
 public class DamageString {
-    public float x;
-    public float y;
-    public float z;
+    private float x;
+    private float y;
+    private float z;
 
-    public float vX;
-    public float vY;
-    public float vZ;
+    private float vX;
+    private float vY;
+    private float vZ;
 
-    public float aX;
-    public float aY;
-    public float aZ;
+    private String displayText;
+    private float life;
+    private float maxLife;
+    private float scale;
+    private int color;
+    private int colorRgb;
 
-    public String damage;
+    private float amount;
+    private String damageType;
 
-    public float life;
-    public float scale;
-    //public boolean isHeal;
-    public int color;
+    private static final float INITIAL_UPWARD_SPEED = 0.15f;
+    private static final float DRAG_FACTOR = 0.9f;
+    private static final float HOVER_THRESHOLD = 0.001f;
+    private static final float FADE_START_RATIO = 0.4f;
+    private static final float SHRINK_DURATION = 20f;
 
-    public DamageString(float x, float y, float z, float damage,int color) {
+    public DamageString(float x, float y, float z, float damage, int color, String damageType) {
         this.x = x;
         this.y = y;
         this.z = z;
 
-        this.vX = (float) (Math.random() - 0.5) * 0.04f;
-        this.vY = 0.06f;
-        this.vZ = (float) (Math.random() - 0.5) * 0.04f;
+        this.vX = (float) (Math.random() - 0.5) * 0.25f;
+        this.vZ = (float) (Math.random() - 0.5) * 0.25f;
+        this.vY = INITIAL_UPWARD_SPEED;
 
-        this.aX = -vX * 0.001f;
-        this.aY = -0.0012f;
-        this.aZ = -vZ * 0.001f;
+        this.life = 80;
+        this.maxLife = this.life;
+        this.scale = 0.04f;
+        this.colorRgb = color & 0x00FFFFFF;
+        this.color = (0xFF << 24) | this.colorRgb;
+        this.damageType = damageType;
 
-        life = 100;
-        scale = 0.04f;
-        this.color = color;
-        //isHeal = damage > 0;
-        //color = damage > 0 ? Color.green.getRGB() : Color.red.getRGB();
-        float amount = Math.abs(damage);
+        this.amount = Math.abs(damage);
+        formatDamage();
+    }
+
+    private void formatDamage() {
         if (amount < 1) {
-            this.damage = String.format("%.2f", amount);
+            this.displayText = String.format("%.2f", amount);
         } else if (amount < 10) {
-            this.damage = String.format("%.1f", amount);
+            this.displayText = String.format("%.1f", amount);
         } else {
-            this.damage = String.format("%.0f", amount);
+            this.displayText = String.format("%.0f", amount);
         }
     }
 
-    public static int setAlpha(int originalColor, int newAlpha) {
-        newAlpha = Math.min(255, Math.max(5, newAlpha));
-        int rgbOnly = originalColor & 0x00FFFFFF;
-        int alphaShifted = newAlpha << 24;
-        return rgbOnly | alphaShifted;
+    public void mergeDamage(float additional) {
+        this.amount += Math.abs(additional);
+        formatDamage();
+        this.life = this.maxLife;
     }
 
-    public void posUpdate(float partialTick) {
-        life -= partialTick;
-        x += vX * partialTick;
-        y += vY * partialTick;
-        z += vZ * partialTick;
-        vX += aX * partialTick;
-        vY += aY * partialTick;
-        vZ += aZ * partialTick;
-        if (life < 60) {
-            //color = setAlpha(color, (int) (life/40*255));
-            color = setAlpha(color, (int) ((Math.cos((double) (60f - life) / (double) 4f) + 2) / 4 * 255));
-            if (life < 20) {
-                scale = 0.04f * life / 20;
-            }
+    public String getDamageType() {
+        return damageType;
+    }
+
+    public float getAmount() {
+        return amount;
+    }
+
+    public float getX() {
+        return x;
+    }
+
+    public float getY() {
+        return y;
+    }
+
+    public float getZ() {
+        return z;
+    }
+
+    public float getLife() {
+        return life;
+    }
+
+    public float getMaxLife() {
+        return maxLife;
+    }
+
+    public boolean isDead() {
+        return life <= 0;
+    }
+
+    private static int setAlpha(int rgb, int alpha) {
+        alpha = Math.min(255, Math.max(0, alpha));
+        return (alpha << 24) | (rgb & 0x00FFFFFF);
+    }
+
+    private void update(float partialTick) {
+        this.life -= partialTick;
+
+        if (this.life > 0) {
+            this.vY *= DRAG_FACTOR;
+            this.vX *= DRAG_FACTOR;
+            this.vZ *= DRAG_FACTOR;
+
+            if (Math.abs(this.vY) < HOVER_THRESHOLD) this.vY = 0;
+            if (Math.abs(this.vX) < HOVER_THRESHOLD) this.vX = 0;
+            if (Math.abs(this.vZ) < HOVER_THRESHOLD) this.vZ = 0;
+
+            this.x += this.vX * partialTick;
+            this.y += this.vY * partialTick;
+            this.z += this.vZ * partialTick;
         }
 
+        float fadeStartLife = this.maxLife * FADE_START_RATIO;
+        int alpha = 255;
+        if (this.life < fadeStartLife) {
+            alpha = (int) ((this.life / fadeStartLife) * 255);
+        }
+        alpha = Math.max(0, Math.min(255, alpha));
+
+        this.color = setAlpha(this.colorRgb, alpha);
     }
 
     public void render(PoseStack poseStack, GuiGraphics guiGraphics, Minecraft mc, float partialTick) {
-        posUpdate(partialTick);
+        update(partialTick);
+
         poseStack.pushPose();
         poseStack.translate(x, y, z);
         poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
-        poseStack.scale(scale, scale, 1);
+
+        float renderScale = scale;
+        if (life < SHRINK_DURATION) {
+            renderScale = scale * (life / SHRINK_DURATION);
+        }
+        poseStack.scale(renderScale, renderScale, 1);
         poseStack.mulPose(new Quaternionf().rotateZ((float) Math.PI));
 
-        //guiGraphics.setColor(1, 1, 1, life < 40 ? life / 40 : 1);
+        guiGraphics.drawString(mc.font, displayText, -mc.font.width(displayText) / 2, -4, this.color, false);
 
-        //RenderSystem.setShaderColor(1, 1, 1, life < 40 ? life / 40 : 1);
-        guiGraphics.drawString(mc.font, damage, -mc.font.width(damage) / 2, -4, color, false);
-        //RenderSystem.setShaderColor(1, 1, 1, 1);
-
-        //guiGraphics.setColor(1, 1, 1, 1);
         poseStack.popPose();
     }
 }

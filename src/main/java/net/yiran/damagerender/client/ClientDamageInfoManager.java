@@ -9,28 +9,56 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientDamageInfoManager {
-    public static Codec<Map<String, TextColor>> COLOR_CODEC = Codec.unboundedMap(Codec.STRING, TextColor.CODEC);
-    public static ClientDamageInfoManager instance = new ClientDamageInfoManager();
-    public static TextColor DEFAULT_COLOR = TextColor.fromRgb(16733525);
-    public CopyOnWriteArrayList<DamageString> damageStringList = new CopyOnWriteArrayList<>();
-    public Map<String, TextColor> damageColorMap = new HashMap<>();
-    public int maxListSize = 128;
+    public static final Codec<Map<String, TextColor>> COLOR_CODEC = Codec.unboundedMap(Codec.STRING, TextColor.CODEC);
+    private static final ClientDamageInfoManager INSTANCE = new ClientDamageInfoManager();
+    public static final TextColor DEFAULT_COLOR = TextColor.fromRgb(0xFF5533);
 
-    public TextColor getColor(DamageInfoData damageInfo) {
-        if(damageColorMap.containsKey(damageInfo.damageType())){
-            return damageColorMap.get(damageInfo.damageType());
-        }
-        if(damageColorMap.containsKey(damageInfo.msgId())){
-            return damageColorMap.get(damageInfo.msgId());
-        }
-        return DEFAULT_COLOR;
+    private static final double MERGE_DISTANCE_SQ = 1.0;
+    private static final float MAX_MERGE_AGE = 40.0f;
+    private static final int MAX_LIST_SIZE = 128;
+
+    private final CopyOnWriteArrayList<DamageString> damageStringList = new CopyOnWriteArrayList<>();
+    private Map<String, TextColor> damageColorMap = new HashMap<>();
+
+    public static ClientDamageInfoManager getInstance() {
+        return INSTANCE;
     }
 
-    public void add(DamageString damageString) {
-        damageStringList.add(damageString);
-        if (damageStringList.size() > maxListSize) {
+    public TextColor getColor(DamageInfoData damageInfo) {
+        TextColor color = damageColorMap.get(damageInfo.damageType());
+        if (color != null) return color;
+        color = damageColorMap.get(damageInfo.msgId());
+        return color != null ? color : DEFAULT_COLOR;
+    }
+
+    public void add(DamageString newString) {
+        for (DamageString existing : damageStringList) {
+            if (!existing.getDamageType().equals(newString.getDamageType())) {
+                continue;
+            }
+
+            double dx = existing.getX() - newString.getX();
+            double dy = existing.getY() - newString.getY();
+            double dz = existing.getZ() - newString.getZ();
+            if (dx * dx + dy * dy + dz * dz > MERGE_DISTANCE_SQ) {
+                continue;
+            }
+
+            float age = existing.getMaxLife() - existing.getLife();
+            if (age <= MAX_MERGE_AGE) {
+                existing.mergeDamage(newString.getAmount());
+                return;
+            }
+        }
+
+        damageStringList.add(newString);
+        if (damageStringList.size() > MAX_LIST_SIZE) {
             damageStringList.remove(0);
         }
+    }
+
+    public CopyOnWriteArrayList<DamageString> getDamageStringList() {
+        return damageStringList;
     }
 
     public void setDamageColorMap(Map<String, TextColor> damageColorMap) {

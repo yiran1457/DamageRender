@@ -15,7 +15,7 @@ public class ServerEventHandler {
     public static void onDamage(LivingDamageEvent event) {
         var pos = event.getEntity().position();
         var level = event.getEntity().level();
-        if (event.getAmount() <= 0) return;
+        if (event.getAmount() <= 0 || event.getSource().typeHolder().unwrapKey().isEmpty()) return;
         ServerLifecycleHooks.getCurrentServer()
                 .getPlayerList()
                 .getPlayers()

@@ -21,21 +21,23 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+
         PoseStack poseStack = event.getPoseStack();
         Camera camera = event.getCamera();
-        Vec3 vec3 = camera.getPosition();
+        Vec3 cameraPos = camera.getPosition();
         Minecraft mc = Minecraft.getInstance();
         GuiGraphics guiGraphics = new GuiGraphics(mc, poseStack, mc.renderBuffers().bufferSource());
 
         float partialTick = event.getPartialTick();
-        {
-            poseStack.pushPose();
-            poseStack.translate(-vec3.x, -vec3.y, -vec3.z);
-            ClientDamageInfoManager.instance.damageStringList.removeIf(damageString -> {
-                damageString.render(poseStack, guiGraphics, mc, partialTick);
-                return damageString.life < 0 ;
-            });
-            poseStack.popPose();
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+
+        ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
+        for (DamageString damageString : manager.getDamageStringList()) {
+            damageString.render(poseStack, guiGraphics, mc, partialTick);
         }
+        manager.getDamageStringList().removeIf(DamageString::isDead);
+
+        poseStack.popPose();
     }
 }

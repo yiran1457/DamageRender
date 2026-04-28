@@ -49,7 +49,7 @@ public class DamageRender {
 
         if (Files.exists(DAMAGE_COLOR_PATH)) {
             var json = JsonParser.parseString(Files.readString(DAMAGE_COLOR_PATH));
-            ClientDamageInfoManager.instance.setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
+            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
         } else {
             var json = new JsonObject();
             json.addProperty("magic", getHexColor(-7722014));
@@ -70,7 +70,7 @@ public class DamageRender {
                 jsonWriter.setLenient(true);
                 Streams.write(json, jsonWriter);
             }
-            ClientDamageInfoManager.instance.setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
+            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
 
         }
 

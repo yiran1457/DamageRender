@@ -20,6 +20,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
 import net.yiran.damagerender.client.ClientEventHandler;
+import net.yiran.damagerender.client.Command;
 import net.yiran.damagerender.data.DamageInfoPacket;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 import net.yiran.damagerender.server.ServerEventHandler;
@@ -51,6 +52,7 @@ public class DamageRender {
         MinecraftForge.EVENT_BUS.register(ServerEventHandler.class);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             MinecraftForge.EVENT_BUS.register(ClientEventHandler.class);
+            MinecraftForge.EVENT_BUS.register(Command.class);
             FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
         }
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);

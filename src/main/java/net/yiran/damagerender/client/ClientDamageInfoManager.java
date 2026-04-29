@@ -2,6 +2,7 @@ package net.yiran.damagerender.client;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.network.chat.TextColor;
+import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.data.DamageInfoData;
 
 import java.util.HashMap;
@@ -12,10 +13,6 @@ public class ClientDamageInfoManager {
     public static final Codec<Map<String, TextColor>> COLOR_CODEC = Codec.unboundedMap(Codec.STRING, TextColor.CODEC);
     private static final ClientDamageInfoManager INSTANCE = new ClientDamageInfoManager();
     public static final TextColor DEFAULT_COLOR = TextColor.fromRgb(0xFF5533);
-
-    private static final double MERGE_DISTANCE_SQ = 1.0;
-    private static final float MAX_MERGE_AGE = 40.0f;
-    private static final int MAX_LIST_SIZE = 128;
 
     private final CopyOnWriteArrayList<DamageString> damageStringList = new CopyOnWriteArrayList<>();
     private Map<String, TextColor> damageColorMap = new HashMap<>();
@@ -32,27 +29,29 @@ public class ClientDamageInfoManager {
     }
 
     public void add(DamageString newString) {
-        for (DamageString existing : damageStringList) {
-            if (!existing.getDamageType().equals(newString.getDamageType())) {
-                continue;
-            }
+        if(ClientConfig.ENABLE_COMBINE_STRING.get()) {
+            for (DamageString existing : damageStringList) {
+                if (!existing.getDamageType().equals(newString.getDamageType())) {
+                    continue;
+                }
 
-            double dx = existing.getX() - newString.getX();
-            double dy = existing.getY() - newString.getY();
-            double dz = existing.getZ() - newString.getZ();
-            if (dx * dx + dy * dy + dz * dz > MERGE_DISTANCE_SQ) {
-                continue;
-            }
+                double dx = existing.getX() - newString.getX();
+                double dy = existing.getY() - newString.getY();
+                double dz = existing.getZ() - newString.getZ();
+                if (dx * dx + dy * dy + dz * dz > ClientConfig.MERGE_DISTANCE_SQ.get()) {
+                    continue;
+                }
 
-            float age = existing.getMaxLife() - existing.getLife();
-            if (age <= MAX_MERGE_AGE) {
-                existing.mergeDamage(newString.getAmount());
-                return;
+                float age = existing.getMaxLife() - existing.getLife();
+                if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
+                    existing.mergeDamage(newString.getAmount());
+                    return;
+                }
             }
         }
 
         damageStringList.add(newString);
-        if (damageStringList.size() > MAX_LIST_SIZE) {
+        if (damageStringList.size() > ClientConfig.MAX_SHOW_RENDER.get()) {
             damageStringList.remove(0);
         }
     }

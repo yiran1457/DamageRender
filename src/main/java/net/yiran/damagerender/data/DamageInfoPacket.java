@@ -18,15 +18,10 @@ public record DamageInfoPacket(DamageInfoData data) implements CustomPacketPaylo
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DamageRender.MODID, "damage_info"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DamageInfoPacket> STREAM_CODEC =
-            StreamCodec.of(DamageInfoPacket::write, DamageInfoPacket::read);
-
-    private static void write(RegistryFriendlyByteBuf buf, DamageInfoPacket packet) {
-        buf.writeJsonWithCodec(DamageInfoData.CODEC, packet.data);
-    }
-
-    private static DamageInfoPacket read(RegistryFriendlyByteBuf buf) {
-        return new DamageInfoPacket(buf.readJsonWithCodec(DamageInfoData.CODEC));
-    }
+            StreamCodec.composite(
+                    DamageInfoData.STREAM_CODEC, DamageInfoPacket::data,
+                    DamageInfoPacket::new
+            );
 
     @Override
     public CustomPacketPayload.Type<? extends DamageInfoPacket> type() {
@@ -41,7 +36,7 @@ public record DamageInfoPacket(DamageInfoData data) implements CustomPacketPaylo
             var vec3 = packet.data.pos();
             int color = ClientDamageInfoManager.getInstance().getColor(packet.data).getValue();
 
-            String typeKey = packet.data.damageType() != null ? packet.data.damageType() : packet.data.msgId();
+            String typeKey = packet.data.damageTypeKey();
 
             DamageString damageString = new DamageString(
                     (float) vec3.x, (float) vec3.y, (float) vec3.z,

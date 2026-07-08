@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonWriter;
-import com.mojang.serialization.JsonOps;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -12,6 +11,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
@@ -44,33 +45,46 @@ public class DamageRender {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NeoForge.EVENT_BUS.register(ClientEventHandler.class);
             NeoForge.EVENT_BUS.register(Command.class);
+            // 注册 Mods 列表里的配置界面（仅客户端）
+            mod.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         }
 
+        loadDamageColorMap();
+    }
+
+    /**
+     * 加载伤害颜色映射：配置文件存在则读取，否则写入默认值。供主类构造与 Command reload 复用。
+     */
+    private static void loadDamageColorMap() {
+        var manager = ClientDamageInfoManager.getInstance();
         if (Files.exists(DAMAGE_COLOR_PATH)) {
-            var json = JsonParser.parseString(Files.readString(DAMAGE_COLOR_PATH));
-            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
-        } else {
-            var json = new JsonObject();
-            json.addProperty("magic", getHexColor(-7722014));
-            json.addProperty("lightningBolt", getHexColor(-256));
-            json.addProperty("lava", getHexColor(-65536));
-            json.addProperty("indirectMagic", getHexColor(-7722014));
-            json.addProperty("freeze", getHexColor(-16711681));
-            json.addProperty("witherSkull", getHexColor(-14221237));
-            json.addProperty("inFire", getHexColor(-65536));
-            json.addProperty("onFire", getHexColor(-65536));
-            json.addProperty("wither", getHexColor(-14221237));
-            json.addProperty("heal", "#00FF00");
-
-            try (Writer fileWriter = Files.newBufferedWriter(DAMAGE_COLOR_PATH)) {
-                JsonWriter jsonWriter = new JsonWriter(fileWriter);
-                jsonWriter.setIndent("\t");
-                jsonWriter.setSerializeNulls(true);
-                jsonWriter.setLenient(true);
-                Streams.write(json, jsonWriter);
+            try {
+                var json = JsonParser.parseString(Files.readString(DAMAGE_COLOR_PATH));
+                manager.parseAndApply(json);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
+            return;
         }
+        // 首次运行：写入默认颜色映射
+        JsonObject json = ClientDamageInfoManager.defaultColorJson();
+        try (Writer fileWriter = Files.newBufferedWriter(DAMAGE_COLOR_PATH)) {
+            JsonWriter jsonWriter = new JsonWriter(fileWriter);
+            jsonWriter.setIndent("\t");
+            jsonWriter.setSerializeNulls(true);
+            jsonWriter.setLenient(true);
+            Streams.write(json, jsonWriter);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        manager.parseAndApply(json);
+    }
+
+    /**
+     * 重新加载伤害颜色映射（Command reload 调用）。
+     */
+    public static void reloadDamageColorMap() {
+        loadDamageColorMap();
     }
 
     public void onRegisterPayloads(RegisterPayloadHandlersEvent event) {

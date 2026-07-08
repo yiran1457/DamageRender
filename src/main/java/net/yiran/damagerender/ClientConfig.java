@@ -12,7 +12,7 @@ public class ClientConfig {
     public static final ModConfigSpec.ConfigValue<Double> MIN_VALUE_DISPLAY;
     public static final ModConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_STRING;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_DISTANCE_SQ;
-    public static final ModConfigSpec.ConfigValue<Float> MERGE_MAX_AGE;
+    public static final ModConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
 
     static {
 
@@ -33,7 +33,7 @@ public class ClientConfig {
                 .define("mergeDistanceSQ", 1.5);
         MERGE_MAX_AGE = BUILDER
                 .comment("合并生成在多少tick以内的文字")
-                .define("mergeMaxAge", 40.0f);
+                .define("mergeMaxAge", 40.0);
         SPEC = BUILDER.build();
 
     }

@@ -18,6 +18,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
 import net.yiran.damagerender.client.ClientEventHandler;
 import net.yiran.damagerender.client.Command;
+import net.yiran.damagerender.data.DamageInfoBatchPacket;
 import net.yiran.damagerender.data.DamageInfoPacket;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 import net.yiran.damagerender.server.ServerEventHandler;
@@ -90,6 +91,7 @@ public class DamageRender {
     public void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar(DamageRender.MODID)
                 .playToClient(DamageInfoPacket.TYPE, DamageInfoPacket.STREAM_CODEC, DamageInfoPacket::handle)
+                .playToClient(DamageInfoBatchPacket.TYPE, DamageInfoBatchPacket.STREAM_CODEC, DamageInfoBatchPacket::handle)
                 .playToServer(UpdateConfigPacket.TYPE, UpdateConfigPacket.STREAM_CODEC, UpdateConfigPacket::handle);
     }
 }

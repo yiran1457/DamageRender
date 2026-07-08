@@ -16,6 +16,7 @@ public class DamageString {
     private float vZ;
 
     private String displayText;
+    private float halfWidth;
     private float life;
     private float maxLife;
     private float scale;
@@ -51,14 +52,9 @@ public class DamageString {
         formatDamage();
     }
 
-    private void formatDamage() {
-        if (amount < 1) {
-            this.displayText = String.format("%.2f", amount);
-        } else if (amount < 10) {
-            this.displayText = String.format("%.1f", amount);
-        } else {
-            this.displayText = String.format("%.0f", amount);
-        }
+    private static int setAlpha(int rgb, int alpha) {
+        alpha = Math.clamp(alpha, 0, 255);
+        return (alpha << 24) | (rgb & 0x00FFFFFF);
     }
 
     public void mergeDamage(float additional) {
@@ -99,9 +95,16 @@ public class DamageString {
         return life <= 0;
     }
 
-    private static int setAlpha(int rgb, int alpha) {
-        alpha = Math.min(255, Math.max(0, alpha));
-        return (alpha << 24) | (rgb & 0x00FFFFFF);
+    private void formatDamage() {
+        if (amount < 1) {
+            this.displayText = String.format("%.2f", amount);
+        } else if (amount < 10) {
+            this.displayText = String.format("%.1f", amount);
+        } else {
+            this.displayText = String.format("%.0f", amount);
+        }
+        // 缓存文字水平居中偏移，避免每帧 render 重复调用 font.width
+        this.halfWidth = -Minecraft.getInstance().font.width(this.displayText) / 2f;
     }
 
     private void update(float partialTick) {
@@ -149,10 +152,10 @@ public class DamageString {
         Font font = mc.font;
         font.drawInBatch(
                 displayText,
-                -font.width(displayText) / 2f,
+                halfWidth,
                 -4f,
                 this.color,
-                false,
+                true,
                 poseStack.last().pose(),
                 bufferSource,
                 Font.DisplayMode.SEE_THROUGH,

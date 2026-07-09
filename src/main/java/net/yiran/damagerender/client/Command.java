@@ -1,21 +1,31 @@
 package net.yiran.damagerender.client;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.yiran.damagerender.ClientConfig;
 
-import static net.yiran.damagerender.DamageRender.reloadDamageColorMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * 客户端命令。
  * 数值/布尔类配置项通过命令 set/get 调整；
- * 颜色映射重载：damagerender-damage-color.json 是自由格式 JSON，ModConfigSpec 不支持，
- * 命令是它的唯一重载入口。
+ * 颜色映射：damagerender-damage-color.json 是自由格式 JSON，ModConfigSpec 不支持，
+ * 命令是它的运行时入口：set/remove/list 单条操作并持久化，reload 整体重载。
  */
 public class Command {
     @SubscribeEvent
@@ -108,16 +118,135 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("showHealNumbers")
+                                        .then(
+                                                Commands.argument("value", BoolArgumentType.bool())
+                                                        .executes(ctx -> {
+                                                            boolean value = BoolArgumentType.getBool(ctx, "value");
+                                                            ClientConfig.SHOW_HEAL_NUMBERS.set(value);
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            boolean value = ClientConfig.SHOW_HEAL_NUMBERS.get();
+                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("setDamageColor")
                                         .then(
                                                 Commands.literal("reload")
                                                         .executes(ctx -> {
-                                                            reloadDamageColorMap();
+                                                            DamageColorManager.getInstance().reload();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("已重载伤害颜色映射"), false);
                                                             return 1;
                                                         })
                                         )
+                                        .then(
+                                                Commands.literal("remove")
+                                                        .then(
+                                                                Commands.argument("damageType", STRING_ALLOWING_COLON)
+                                                                        .suggests(DAMAGE_TYPE_SUGGESTIONS)
+                                                                        .executes(ctx -> {
+                                                                            String key = ctx.getArgument("damageType", String.class);
+                                                                            boolean removed = DamageColorManager.getInstance().remove(key);
+                                                                            if (removed) {
+                                                                                ctx.getSource().sendSuccess(() -> Component.literal("已移除伤害颜色 : " + key), false);
+                                                                                return 1;
+                                                                            }
+                                                                            ctx.getSource().sendFailure(Component.literal("未找到伤害类型 : " + key));
+                                                                            return 0;
+                                                                        })
+                                                        )
+                                        )
+                                        .then(
+                                                Commands.literal("list")
+                                                        .executes(ctx -> {
+                                                            var map = DamageColorManager.getInstance().getMap();
+                                                            if (map.isEmpty()) {
+                                                                ctx.getSource().sendSuccess(() -> Component.literal("当前颜色映射为空"), false);
+                                                                return 1;
+                                                            }
+                                                            map.forEach((k, v) ->
+                                                                    ctx.getSource().sendSuccess(() -> Component.literal(k + " : " + v.serialize()), false));
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("共 " + map.size() + " 项"), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .then(
+                                                Commands.argument("damageType", STRING_ALLOWING_COLON)
+                                                        .suggests(DAMAGE_TYPE_SUGGESTIONS)
+                                                        .then(
+                                                                Commands.argument("color", STRING_ALLOWING_COLON)
+                                                                        .executes(ctx -> {
+                                                                            String key = ctx.getArgument("damageType", String.class);
+                                                                            String colorInput = ctx.getArgument("color", String.class);
+                                                                            TextColor color = parseColorInput(colorInput);
+                                                                            if (color == null) {
+                                                                                ctx.getSource().sendFailure(Component.literal("无效颜色 : " + colorInput + "（支持 #RRGGBB、颜色名、十进制整数）"));
+                                                                                return 0;
+                                                                            }
+                                                                            DamageColorManager.getInstance().put(key, color);
+                                                                            ctx.getSource().sendSuccess(() -> Component.literal("伤害颜色 " + key + " 设置为 : " + color.serialize()), false);
+                                                                            return 1;
+                                                                        })
+                                                        )
+                                        )
                         )
         );
+    }
+
+    /**
+     * 自定义参数类型：读取直到空白字符为止的任意字符串。
+     * 替代 {@link com.mojang.brigadier.arguments.StringArgumentType#string()} ，解决后者 {@code readUnquotedString()}
+     * 不允许 {@code :}、{@code #} 等字符的问题——如 {@code minecraft:void} 会报"紧邻的数据"。
+     */
+    private static final ArgumentType<String> STRING_ALLOWING_COLON = new ArgumentType<>() {
+        @Override
+        public String parse(StringReader reader) throws CommandSyntaxException {
+            int start = reader.getCursor();
+            while (reader.canRead() && !Character.isWhitespace(reader.peek())) {
+                reader.skip();
+            }
+            if (reader.getCursor() == start) {
+                throw new SimpleCommandExceptionType(
+                        Component.literal("需要提供参数值")).create();
+            }
+            return reader.getString().substring(start, reader.getCursor());
+        }
+    };
+
+    /**
+     * damageType 参数的 Tab 补全：合并 DamageType 注册表 location、heal 兜底键、当前颜色映射已有键，去重。
+     */
+    private static final SuggestionProvider<CommandSourceStack> DAMAGE_TYPE_SUGGESTIONS =
+            (ctx, builder) -> {
+                Set<String> candidates = new LinkedHashSet<>();
+                try {
+                    // registryAccess 在单机未载入/未连接时可能不可用，静默兜底
+                    ctx.getSource().registryAccess()
+                            .registry(Registries.DAMAGE_TYPE)
+                            .ifPresent(reg -> reg.registryKeySet()
+                                    .forEach(rk -> candidates.add(rk.location().toString())));
+                } catch (Exception ignored) {
+                }
+                candidates.add("heal");
+                candidates.addAll(DamageColorManager.getInstance().getMap().keySet());
+                return SharedSuggestionProvider.suggest(candidates, builder);
+            };
+
+    /**
+     * 解析颜色输入：支持 #RRGGBB、命名颜色（red/green…）、十进制整数（含 0x 前缀）。失败返回 null。
+     */
+    private static TextColor parseColorInput(String input) {
+        TextColor color = TextColor.parseColor(input);
+        if (color != null) return color;
+        try {
+            return TextColor.fromRgb(Integer.decode(input));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

@@ -13,6 +13,7 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_STRING;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
+    public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
 
     static {
 
@@ -34,6 +35,9 @@ public class ClientConfig {
         DAMAGE_STRING_LIFE = BUILDER
                 .comment("伤害数字存活时间（tick）")
                 .defineInRange("damageStringLife", 30, 5, 600);
+        SHOW_HEAL_NUMBERS = BUILDER
+                .comment("是否显示治疗数字")
+                .define("showHealNumbers", true);
         SPEC = BUILDER.build();
 
     }

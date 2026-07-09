@@ -5,7 +5,9 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.network.PacketDistributor;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.DamageInfoBatchPacket;
@@ -58,28 +60,48 @@ public class ServerDamageInfoManager {
     public void flush(MinecraftServer server) {
         if (pending.isEmpty()) return;
 
+        var players = server.getPlayerList().getPlayers();
+        int playerCount = players.size();
+        if (playerCount == 0) {
+            pending.clear();
+            return;
+        }
+
+        // 预取每个玩家的不变属性（level / uuid / stringUUID / 可见距离），避免内层 O(pending×players) 循环里重复调用
+        ServerPlayer[] playerArr = new ServerPlayer[playerCount];
+        Level[] playerLevels = new Level[playerCount];
+        UUID[] playerUuids = new UUID[playerCount];
+        int[] playerDistances = new int[playerCount];
+        for (int i = 0; i < playerCount; i++) {
+            ServerPlayer p = players.get(i);
+            playerArr[i] = p;
+            playerLevels[i] = p.level();
+            playerUuids[i] = p.getUUID();
+            playerDistances[i] = getDistance(p.getStringUUID());
+        }
+
         // 按玩家分组收集本 tick 内对其可见的伤害信息
         // Object2ObjectOpenHashMap: open addressing 比 HashMap chaining 快 ~20-30%
         var perPlayer = new Object2ObjectOpenHashMap<UUID, ObjectArrayList<DamageInfoData>>();
-        var players = server.getPlayerList().getPlayers();
         for (int i = 0, len = pending.size(); i < len; i++) {
             PendingEntry entry = pending.get(i);
             LivingEntity entity = entry.entity;
-            var level = entity.level();
-            for (var serverPlayer : players) {
-                if (!serverPlayer.level().equals(level)) continue;
-                double dist = serverPlayer.distanceTo(entity);
-                if (dist < getDistance(serverPlayer.getStringUUID())) {
-                    perPlayer.computeIfAbsent(serverPlayer.getUUID(), k -> new ObjectArrayList<>()).add(entry.data);
+            Level level = entity.level();
+            for (int j = 0; j < playerCount; j++) {
+                if (!playerLevels[j].equals(level)) continue;
+                double dist = playerArr[j].distanceTo(entity);
+                if (dist < playerDistances[j]) {
+                    perPlayer.computeIfAbsent(playerUuids[j], k -> new ObjectArrayList<>()).add(entry.data);
                 }
             }
         }
         pending.clear();
 
-        for (var serverPlayer : players) {
-            ObjectArrayList<DamageInfoData> list = perPlayer.get(serverPlayer.getUUID());
+        for (int j = 0; j < playerCount; j++) {
+            ObjectArrayList<DamageInfoData> list = perPlayer.get(playerUuids[j]);
             if (list != null && !list.isEmpty()) {
-                DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DamageInfoBatchPacket(list));
+                ServerPlayer target = playerArr[j];
+                DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> target), new DamageInfoBatchPacket(list));
             }
         }
     }

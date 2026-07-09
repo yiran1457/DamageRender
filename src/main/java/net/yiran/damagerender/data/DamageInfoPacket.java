@@ -39,6 +39,7 @@ public record DamageInfoPacket(DamageInfoData data) implements CustomPacketPaylo
             String typeKey = packet.data.damageTypeKey();
 
             DamageString damageString = new DamageString(
+                    packet.data.entityId(),
                     (float) vec3.x, (float) vec3.y, (float) vec3.z,
                     (float) amount,
                     color,

@@ -18,9 +18,11 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>治疗（heal）不是真实注册的 DamageType，没有合法 Holder，因此走 {@link #fallbackKey} 旁路
  * （如 "heal"），此时 {@link #typeHolder} 为 null。
+ *
+ * <p>{@link #entityId} 为受击/治疗实体的网络 id，客户端据此判断飘字是否可合并到同一实体。
  */
-public record DamageInfoData(@Nullable Holder<DamageType> typeHolder, @Nullable String fallbackKey, Vec3 pos,
-                             double amount) {
+public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHolder, @Nullable String fallbackKey,
+                             Vec3 pos, double amount) {
 
     private static final StreamCodec<ByteBuf, Vec3> VEC_3_STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.DOUBLE,
@@ -37,6 +39,7 @@ public record DamageInfoData(@Nullable Holder<DamageType> typeHolder, @Nullable 
     );
 
     private static void write(RegistryFriendlyByteBuf buf, DamageInfoData data) {
+        buf.writeVarInt(data.entityId);
         FriendlyByteBuf.writeNullable(buf, data.typeHolder, DamageType.STREAM_CODEC);
         FriendlyByteBuf.writeNullable(buf, data.fallbackKey, ByteBufCodecs.STRING_UTF8);
         VEC_3_STREAM_CODEC.encode(buf, data.pos);
@@ -44,11 +47,12 @@ public record DamageInfoData(@Nullable Holder<DamageType> typeHolder, @Nullable 
     }
 
     private static DamageInfoData read(RegistryFriendlyByteBuf buf) {
+        int entityId = buf.readVarInt();
         Holder<DamageType> typeHolder = FriendlyByteBuf.readNullable(buf, DamageType.STREAM_CODEC);
         String fallbackKey =  FriendlyByteBuf.readNullable(buf,ByteBufCodecs.STRING_UTF8);
         Vec3 pos = VEC_3_STREAM_CODEC.decode(buf);
         double amount = buf.readDouble();
-        return new DamageInfoData(typeHolder, fallbackKey, pos, amount);
+        return new DamageInfoData(entityId, typeHolder, fallbackKey, pos, amount);
     }
 
     /**

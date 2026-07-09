@@ -32,7 +32,7 @@ public class ServerDamageInfoManager {
     private final ObjectArrayList<PendingEntry> pending = new ObjectArrayList<>();
 
     public void clearPlayerConfigs(String uuid) {
-        playerDistance.remove(uuid);
+        playerDistance.removeInt(uuid);
     }
 
     public int getDistance(String uuid) {

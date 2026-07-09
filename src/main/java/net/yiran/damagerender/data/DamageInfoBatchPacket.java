@@ -55,6 +55,7 @@ public record DamageInfoBatchPacket(List<DamageInfoData> entries) implements Cus
                 String typeKey = data.damageTypeKey();
 
                 DamageString damageString = new DamageString(
+                        data.entityId(),
                         (float) vec3.x, (float) vec3.y, (float) vec3.z,
                         (float) amount,
                         color,

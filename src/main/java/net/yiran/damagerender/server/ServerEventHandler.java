@@ -19,6 +19,7 @@ public class ServerEventHandler {
         if (event.getNewDamage() <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
 
         var data = new DamageInfoData(
+                entity.getId(),
                 source.typeHolder(),
                 null,
                 entity.position().add(0, entity.getBbHeight(), 0),
@@ -35,7 +36,7 @@ public class ServerEventHandler {
 
         Vec3 pos = entity.position().add(0, entity.getBbHeight(), 0);
         // heal 不是注册的 DamageType，无合法 Holder，走 fallbackKey 旁路
-        var data = new DamageInfoData(null, "heal", pos, event.getAmount());
+        var data = new DamageInfoData(entity.getId(), null, "heal", pos, event.getAmount());
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }
 

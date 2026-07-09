@@ -26,6 +26,7 @@ public class DamageString {
     private int colorRgb;
 
     private float amount;
+    private final int entityId;
     private String damageType;
     private float fadeStartLife;
     private static final float DRAG_FACTOR = 0.9f;
@@ -33,7 +34,8 @@ public class DamageString {
     private static final float FADE_START_RATIO = 0.4f;
     private static final float SHRINK_DURATION = 20f;
 
-    public DamageString(float x, float y, float z, float damage, int color, String damageType) {
+    public DamageString(int entityId, float x, float y, float z, float damage, int color, String damageType) {
+        this.entityId = entityId;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -62,6 +64,10 @@ public class DamageString {
 
     public String getDamageType() {
         return damageType;
+    }
+
+    public int getEntityId() {
+        return entityId;
     }
 
     public float getAmount() {

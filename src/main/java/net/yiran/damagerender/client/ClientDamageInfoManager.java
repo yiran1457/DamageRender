@@ -72,15 +72,14 @@ public class ClientDamageInfoManager {
 
     public void add(DamageString newString) {
         if(ClientConfig.ENABLE_COMBINE_STRING.get()) {
+            int newEntityId = newString.getEntityId();
+            String newDamageType = newString.getDamageType();
             for (DamageString existing : damageStringList) {
-                if (!existing.getDamageType().equals(newString.getDamageType())) {
+                // 合并条件：同一实体 + 同一伤害类型（不再检测距离）
+                if (existing.getEntityId() != newEntityId) {
                     continue;
                 }
-
-                double dx = existing.getX() - newString.getX();
-                double dy = existing.getY() - newString.getY();
-                double dz = existing.getZ() - newString.getZ();
-                if (dx * dx + dy * dy + dz * dz > ClientConfig.MERGE_DISTANCE_SQ.get()) {
+                if (!existing.getDamageType().equals(newDamageType)) {
                     continue;
                 }
 

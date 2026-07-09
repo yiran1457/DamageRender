@@ -4,14 +4,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonWriter;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
@@ -21,6 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
 import net.yiran.damagerender.client.ClientEventHandler;
 import net.yiran.damagerender.client.Command;
+import net.yiran.damagerender.data.DamageInfoBatchPacket;
 import net.yiran.damagerender.data.DamageInfoPacket;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 import net.yiran.damagerender.server.ServerEventHandler;
@@ -53,36 +52,10 @@ public class DamageRender {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             MinecraftForge.EVENT_BUS.register(ClientEventHandler.class);
             MinecraftForge.EVENT_BUS.register(Command.class);
-            FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
         }
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
-        if (Files.exists(DAMAGE_COLOR_PATH)) {
-            var json = JsonParser.parseString(Files.readString(DAMAGE_COLOR_PATH));
-            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
-        } else {
-            var json = new JsonObject();
-            json.addProperty("magic", getHexColor(-7722014));
-            json.addProperty("lightningBolt", getHexColor(-256));
-            json.addProperty("lava", getHexColor(-65536));
-            json.addProperty("indirectMagic", getHexColor(-7722014));
-            json.addProperty("freeze", getHexColor(-16711681));
-            json.addProperty("witherSkull", getHexColor(-14221237));
-            json.addProperty("inFire", getHexColor(-65536));
-            json.addProperty("onFire", getHexColor(-65536));
-            json.addProperty("wither", getHexColor(-14221237));
-            json.addProperty("heal", "#00FF00");
-
-            try (Writer fileWriter = Files.newBufferedWriter(DAMAGE_COLOR_PATH)) {
-                JsonWriter jsonWriter = new JsonWriter(fileWriter);
-                jsonWriter.setIndent("\t");
-                jsonWriter.setSerializeNulls(true);
-                jsonWriter.setLenient(true);
-                Streams.write(json, jsonWriter);
-            }
-            ClientDamageInfoManager.getInstance().setDamageColorMap(ClientDamageInfoManager.COLOR_CODEC.parse(JsonOps.INSTANCE, json).result().get());
-
-        }
+        loadDamageColorMap();
 
         ModLoadingContext.get().registerConfig(
                 ModConfig.Type.CLIENT,
@@ -93,10 +66,41 @@ public class DamageRender {
     public void onCommonSetup(FMLCommonSetupEvent event) {
         NETWORK.registerMessage(0, DamageInfoPacket.class, DamageInfoPacket::toBytes, DamageInfoPacket::newInstance, DamageInfoPacket::handle);
         NETWORK.registerMessage(1, UpdateConfigPacket.class, UpdateConfigPacket::toBytes, UpdateConfigPacket::newInstance, UpdateConfigPacket::handle);
+        NETWORK.registerMessage(2, DamageInfoBatchPacket.class, DamageInfoBatchPacket::toBytes, DamageInfoBatchPacket::newInstance, DamageInfoBatchPacket::handle);
     }
 
-    public void onClientSetup(FMLClientSetupEvent event) {
-
+    /**
+     * 加载伤害颜色映射：配置文件存在则读取，否则写入默认值。供主类构造与 Command reload 复用。
+     */
+    private static void loadDamageColorMap() {
+        var manager = ClientDamageInfoManager.getInstance();
+        if (Files.exists(DAMAGE_COLOR_PATH)) {
+            try {
+                var json = JsonParser.parseString(Files.readString(DAMAGE_COLOR_PATH));
+                manager.parseAndApply(json);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
+        // 首次运行：写入默认颜色映射
+        JsonObject json = ClientDamageInfoManager.defaultColorJson();
+        try (Writer fileWriter = Files.newBufferedWriter(DAMAGE_COLOR_PATH)) {
+            JsonWriter jsonWriter = new JsonWriter(fileWriter);
+            jsonWriter.setIndent("\t");
+            jsonWriter.setSerializeNulls(true);
+            jsonWriter.setLenient(true);
+            Streams.write(json, jsonWriter);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        manager.parseAndApply(json);
     }
 
+    /**
+     * 重新加载伤害颜色映射（Command reload 调用）。
+     */
+    public static void reloadDamageColorMap() {
+        loadDamageColorMap();
+    }
 }

@@ -8,6 +8,9 @@ import net.yiran.damagerender.client.DamageString;
 
 import java.util.function.Supplier;
 
+/**
+ * 服务端 -> 客户端：发送一次伤害信息用于渲染飘字。
+ */
 public class DamageInfoPacket {
     public DamageInfoData data;
 
@@ -20,13 +23,11 @@ public class DamageInfoPacket {
     }
 
     public static void toBytes(DamageInfoPacket packet, FriendlyByteBuf buf) {
-        buf.writeJsonWithCodec(DamageInfoData.CODEC, packet.data);
+        DamageInfoData.toBytes(packet.data, buf);
     }
 
     public static DamageInfoPacket newInstance(FriendlyByteBuf buf) {
-        DamageInfoPacket packet = new DamageInfoPacket();
-        packet.data = buf.readJsonWithCodec(DamageInfoData.CODEC);
-        return packet;
+        return new DamageInfoPacket(DamageInfoData.fromBytes(buf));
     }
 
     public static void handle(DamageInfoPacket packet, Supplier<NetworkEvent.Context> ctxSupplier) {
@@ -38,9 +39,10 @@ public class DamageInfoPacket {
             var vec3 = packet.data.pos();
             int color = ClientDamageInfoManager.getInstance().getColor(packet.data).getValue();
 
-            String typeKey = packet.data.damageType() != null ? packet.data.damageType() : packet.data.msgId();
+            String typeKey = packet.data.damageTypeKey();
 
             DamageString damageString = new DamageString(
+                    packet.data.entityId(),
                     (float) vec3.x, (float) vec3.y, (float) vec3.z,
                     (float) amount,
                     color,

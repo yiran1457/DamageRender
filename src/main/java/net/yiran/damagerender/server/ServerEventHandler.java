@@ -1,59 +1,52 @@
 package net.yiran.damagerender.server;
 
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.server.ServerLifecycleHooks;
-import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.DamageInfoData;
-import net.yiran.damagerender.data.DamageInfoPacket;
 
 public class ServerEventHandler {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDamage(LivingDamageEvent event) {
-        var pos = event.getEntity().position();
-        var level = event.getEntity().level();
-        if (event.getAmount() <= 0 || event.getSource().typeHolder().unwrapKey().isEmpty()) return;
-        ServerLifecycleHooks.getCurrentServer()
-                .getPlayerList()
-                .getPlayers()
-                .stream()
-                .filter(serverPlayer -> serverPlayer.level().equals(level))
-                .filter(serverPlayer -> serverPlayer.distanceTo(event.getEntity()) < ServerDamageInfoManager.instance.getDistance(serverPlayer.getStringUUID()))
-                .forEach(serverPlayer -> {
-                    var data = new DamageInfoData(
-                            event.getSource().typeHolder().unwrapKey().get().location().toString(),
-                            event.getSource().getMsgId(),
-                            pos.add(0, event.getEntity().getBbHeight(), 0),
-                            event.getAmount()
-                    );
-                    DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DamageInfoPacket(data));
-                });
+        LivingEntity entity = event.getEntity();
+        var source = event.getSource();
+        if (event.getAmount() <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
+
+        var data = new DamageInfoData(
+                entity.getId(),
+                source.typeHolder().unwrapKey().get().location(),
+                null,
+                entity.position().add(0, entity.getBbHeight(), 0),
+                event.getAmount()
+        );
+        // 攒入缓冲，本 tick 末尾合批发送
+        ServerDamageInfoManager.instance.enqueue(entity, data);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onHeal(LivingHealEvent event) {
-        var pos = event.getEntity().position();
-        var level = event.getEntity().level();
+        LivingEntity entity = event.getEntity();
         if (event.getAmount() <= 0) return;
-        ServerLifecycleHooks.getCurrentServer()
-                .getPlayerList()
-                .getPlayers()
-                .stream()
-                .filter(serverPlayer -> serverPlayer.level().equals(level))
-                .filter(serverPlayer -> serverPlayer.distanceTo(event.getEntity()) < ServerDamageInfoManager.instance.getDistance(serverPlayer.getStringUUID()))
-                .forEach(serverPlayer -> {
-                    var data = new DamageInfoData(
-                            "heal",
-                            "heal",
-                            pos.add(0, event.getEntity().getBbHeight(), 0),
-                            event.getAmount()
-                    );
-                    DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DamageInfoPacket(data));
-                });
+
+        var pos = entity.position().add(0, entity.getBbHeight(), 0);
+        // heal 不是注册的 DamageType，无合法 location，走 fallbackKey 旁路
+        var data = new DamageInfoData(entity.getId(), null, "heal", pos, event.getAmount());
+        ServerDamageInfoManager.instance.enqueue(entity, data);
+    }
+
+    /**
+     * 每 tick 末尾：把本 tick 攒下的伤害信息按玩家就近过滤后合批发送。
+     */
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            ServerDamageInfoManager.instance.flush(ServerLifecycleHooks.getCurrentServer());
+        }
     }
 
     @SubscribeEvent

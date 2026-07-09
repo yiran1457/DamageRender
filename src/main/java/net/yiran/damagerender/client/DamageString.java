@@ -61,6 +61,7 @@ public class DamageString {
         this.amount += Math.abs(additional);
         formatDamage();
         this.life = this.maxLife;
+        this.color = (0xFF << 24) | this.colorRgb;
     }
 
     public String getDamageType() {

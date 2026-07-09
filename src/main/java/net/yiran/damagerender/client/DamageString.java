@@ -7,7 +7,6 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
 import net.yiran.damagerender.ClientConfig;
-import org.joml.Quaternionf;
 
 public class DamageString {
     private float x;
@@ -152,8 +151,7 @@ public class DamageString {
         if (life < SHRINK_DURATION) {
             renderScale = scale * (life / SHRINK_DURATION);
         }
-        poseStack.scale(renderScale, renderScale, renderScale);
-        poseStack.mulPose(new Quaternionf().rotateZ((float) Math.PI));
+        poseStack.scale(-renderScale, -renderScale, -renderScale);
 
         Font font = mc.font;
         font.drawInBatch(
@@ -164,7 +162,7 @@ public class DamageString {
                 true,
                 poseStack.last().pose(),
                 bufferSource,
-                Font.DisplayMode.POLYGON_OFFSET,
+                Font.DisplayMode.NORMAL,
                 LightTexture.FULL_BRIGHT,
                 LightTexture.FULL_BRIGHT
         );

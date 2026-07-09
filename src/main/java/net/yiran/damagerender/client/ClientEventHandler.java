@@ -12,8 +12,6 @@ import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 
-import java.util.List;
-
 /**
  * 飘字渲染入口。
  *
@@ -43,8 +41,10 @@ public class ClientEventHandler {
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
         ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
-        List<DamageString> list = manager.getDamageStringList();
-        list.removeIf(damageString -> damageString.render(poseStack, bufferSource, mc, partialTick));
+        for (DamageString damageString : manager.getDamageStringList()) {
+            damageString.render(poseStack, bufferSource, mc, partialTick);
+        }
+        manager.removeDead();
 
         poseStack.popPose();
     }

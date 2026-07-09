@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.chat.TextColor;
@@ -39,6 +40,12 @@ public class ClientDamageInfoManager {
     /** 颜色映射：open addressing 比 HashMap chaining 快 ~20-30% on get，getColor 每条伤害调两次。 */
     private final Object2ObjectOpenHashMap<String, TextColor> damageColorMap = new Object2ObjectOpenHashMap<>();
 
+    /**
+     * 合并查找索引：entityId → (damageType → DamageString)。
+     * 将 add 的合并查找从 O(n) 降到 O(1)，大量飘字时不再卡顿。
+     */
+    private final Int2ObjectOpenHashMap<Object2ObjectOpenHashMap<String, DamageString>> mergeIndex = new Int2ObjectOpenHashMap<>();
+
     public static ClientDamageInfoManager getInstance() {
         return INSTANCE;
     }
@@ -71,29 +78,66 @@ public class ClientDamageInfoManager {
     }
 
     public void add(DamageString newString) {
-        if(ClientConfig.ENABLE_COMBINE_STRING.get()) {
-            int newEntityId = newString.getEntityId();
-            String newDamageType = newString.getDamageType();
-            for (DamageString existing : damageStringList) {
-                // 合并条件：同一实体 + 同一伤害类型（不再检测距离）
-                if (existing.getEntityId() != newEntityId) {
-                    continue;
-                }
-                if (!existing.getDamageType().equals(newDamageType)) {
-                    continue;
-                }
+        if (ClientConfig.ENABLE_COMBINE_STRING.get()) {
+            int entityId = newString.getEntityId();
+            String damageType = newString.getDamageType();
 
-                float age = existing.getMaxLife() - existing.getLife();
-                if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
-                    existing.mergeDamage(newString.getAmount());
-                    return;
+            // O(1) 合并查找：通过索引直接定位同实体同类型的飘字
+            var typeMap = mergeIndex.get(entityId);
+            if (typeMap != null) {
+                DamageString existing = typeMap.get(damageType);
+                if (existing != null) {
+                    float age = existing.getMaxLife() - existing.getLife();
+                    if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
+                        existing.mergeDamage(newString.getAmount());
+                        return;
+                    }
+                    // 已超龄，从索引移除（下面会重新添加新条目）
+                    typeMap.remove(damageType);
+                    if (typeMap.isEmpty()) {
+                        mergeIndex.remove(entityId);
+                    }
                 }
             }
         }
 
         damageStringList.add(newString);
+        if (ClientConfig.ENABLE_COMBINE_STRING.get()) {
+            var typeMap = mergeIndex.computeIfAbsent(newString.getEntityId(), k -> new Object2ObjectOpenHashMap<>());
+            typeMap.put(newString.getDamageType(), newString);
+        }
         if (damageStringList.size() > ClientConfig.MAX_SHOW_RENDER.get()) {
-            damageStringList.remove(0);
+            DamageString removed = damageStringList.remove(0);
+            removeFromIndex(removed);
+        }
+    }
+
+    /**
+     * 从飘字列表和合并索引中移除已死亡的条目。由渲染帧末尾调用。
+     */
+    public void removeDead() {
+        damageStringList.removeIf(ds -> {
+            if (ds.isDead()) {
+                removeFromIndex(ds);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    /**
+     * 从合并索引中移除指定飘字（仅当索引仍指向该条目时才移除，避免误删已替换的新条目）。
+     */
+    private void removeFromIndex(DamageString ds) {
+        var typeMap = mergeIndex.get(ds.getEntityId());
+        if (typeMap != null) {
+            // 仅当索引仍指向该条目时才移除，避免误删已替换的新条目
+            if (typeMap.get(ds.getDamageType()) == ds) {
+                typeMap.remove(ds.getDamageType());
+                if (typeMap.isEmpty()) {
+                    mergeIndex.remove(ds.getEntityId());
+                }
+            }
         }
     }
 

@@ -136,11 +136,11 @@ public class DamageString {
         }
     }
 
-    public boolean render(PoseStack poseStack, MultiBufferSource bufferSource, Minecraft mc, float partialTick) {
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, Minecraft mc, float partialTick) {
         update(partialTick);
 
         // 已死亡或完全透明则跳过渲染（避免无谓的矩阵变换和顶点生成）
-        if (life <= 0 || (this.color >>> 24) == 0) return true;
+        if (life <= 0 || (this.color >>> 24) == 0) return;
 
         poseStack.pushPose();
         poseStack.translate(x, y, z);
@@ -169,6 +169,5 @@ public class DamageString {
         );
 
         poseStack.popPose();
-        return false;
     }
 }

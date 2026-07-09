@@ -12,5 +12,7 @@
   "damagerender.configuration.mergeDistanceSQ.tooltip": "Squared radius within which damage numbers are merged.",
   "damagerender.configuration.mergeMaxAge": "Merge Max Age",
   "damagerender.configuration.mergeMaxAge.tooltip": "Damage numbers younger than this many ticks (since spawn) can be merged.",
+  "damagerender.configuration.damageStringLife": "Lifespan (ticks)",
+  "damagerender.configuration.damageStringLife.tooltip": "How long each damage number stays visible, in ticks (20 ticks = 1 second).",
   "damagerender.command.damagerender": "DamageRender"
 }

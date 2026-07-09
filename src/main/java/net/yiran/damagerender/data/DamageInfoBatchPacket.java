@@ -1,5 +1,6 @@
 package net.yiran.damagerender.data;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -10,7 +11,6 @@ import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
 import net.yiran.damagerender.client.DamageString;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,7 +35,7 @@ public record DamageInfoBatchPacket(List<DamageInfoData> entries) implements Cus
 
     private static DamageInfoBatchPacket read(RegistryFriendlyByteBuf buf) {
         int size = buf.readVarInt();
-        List<DamageInfoData> entries = new ArrayList<>(size);
+        List<DamageInfoData> entries = new ObjectArrayList<>(size);
         for (int i = 0; i < size; i++) {
             entries.add(DamageInfoData.STREAM_CODEC.decode(buf));
         }

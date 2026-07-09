@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.yiran.damagerender.ClientConfig;
 
 public class DamageString {
     private float x;
@@ -19,14 +20,14 @@ public class DamageString {
     private float halfWidth;
     private float life;
     private float maxLife;
+    private static final float INITIAL_UPWARD_SPEED = 0.6f;
     private float scale;
     private int color;
     private int colorRgb;
 
     private float amount;
     private String damageType;
-
-    private static final float INITIAL_UPWARD_SPEED = 0.15f;
+    private float fadeStartLife;
     private static final float DRAG_FACTOR = 0.9f;
     private static final float HOVER_THRESHOLD = 0.001f;
     private static final float FADE_START_RATIO = 0.4f;
@@ -39,10 +40,11 @@ public class DamageString {
 
         this.vX = (float) (Math.random() - 0.5) * 0.25f;
         this.vZ = (float) (Math.random() - 0.5) * 0.25f;
-        this.vY = INITIAL_UPWARD_SPEED;
+        this.vY = 1.2f;
 
-        this.life = 80;
+        this.life = ClientConfig.DAMAGE_STRING_LIFE.get();
         this.maxLife = this.life;
+        this.fadeStartLife = this.maxLife * FADE_START_RATIO;
         this.scale = 0.04f;
         this.colorRgb = color & 0x00FFFFFF;
         this.color = (0xFF << 24) | this.colorRgb;
@@ -50,11 +52,6 @@ public class DamageString {
 
         this.amount = Math.abs(damage);
         formatDamage();
-    }
-
-    private static int setAlpha(int rgb, int alpha) {
-        alpha = Math.clamp(alpha, 0, 255);
-        return (alpha << 24) | (rgb & 0x00FFFFFF);
     }
 
     public void mergeDamage(float additional) {
@@ -124,18 +121,18 @@ public class DamageString {
             this.z += this.vZ * partialTick;
         }
 
-        float fadeStartLife = this.maxLife * FADE_START_RATIO;
-        int alpha = 255;
+        // 淡出阶段更新 alpha；否则 alpha 保持 255（构造器已设好）
         if (this.life < fadeStartLife) {
-            alpha = (int) ((this.life / fadeStartLife) * 255);
+            int alpha = Math.clamp((int) ((this.life / fadeStartLife) * 255), 0, 255);
+            this.color = (alpha << 24) | this.colorRgb;
         }
-        alpha = Math.clamp(alpha, 0, 255);
-
-        this.color = setAlpha(this.colorRgb, alpha);
     }
 
-    public void render(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, Minecraft mc, float partialTick) {
+    public boolean render(PoseStack poseStack, MultiBufferSource bufferSource, Minecraft mc, float partialTick) {
         update(partialTick);
+
+        // 已死亡或完全透明则跳过渲染（避免无谓的矩阵变换和顶点生成）
+        if (life <= 0 || (this.color >>> 24) == 0) return true;
 
         poseStack.pushPose();
         poseStack.translate(x, y, z);
@@ -158,11 +155,12 @@ public class DamageString {
                 true,
                 poseStack.last().pose(),
                 bufferSource,
-                Font.DisplayMode.SEE_THROUGH,
+                Font.DisplayMode.NORMAL,
                 LightTexture.FULL_BRIGHT,
-                0
+                LightTexture.FULL_BRIGHT
         );
 
         poseStack.popPose();
+        return false;
     }
 }

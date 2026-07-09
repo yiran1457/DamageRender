@@ -12,5 +12,7 @@
   "damagerender.configuration.mergeDistanceSQ.tooltip": "在此半径（平方）内的伤害数字会被合并。",
   "damagerender.configuration.mergeMaxAge": "合并最大年龄",
   "damagerender.configuration.mergeMaxAge.tooltip": "生成后在此 tick 数以内的文字可被合并。",
+  "damagerender.configuration.damageStringLife": "存活时间（tick）",
+  "damagerender.configuration.damageStringLife.tooltip": "每个伤害数字的可见时长，单位 tick（20 tick = 1 秒）。",
   "damagerender.command.damagerender": "伤害渲染"
 }

@@ -4,14 +4,14 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.chat.TextColor;
 import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.DamageInfoData;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientDamageInfoManager {
     public static final Codec<Map<String, TextColor>> COLOR_CODEC = Codec.unboundedMap(Codec.STRING, TextColor.CODEC);
@@ -34,8 +34,10 @@ public class ClientDamageInfoManager {
             Map.entry("heal", "#00FF00")
     );
 
-    private final CopyOnWriteArrayList<DamageString> damageStringList = new CopyOnWriteArrayList<>();
-    private Map<String, TextColor> damageColorMap = new HashMap<>();
+    /** 飘字列表：ObjectArrayList 比 java.util.ArrayList 省 range check 和 modCount，每帧遍历数千次有收益。 */
+    private final ObjectArrayList<DamageString> damageStringList = new ObjectArrayList<>();
+    /** 颜色映射：open addressing 比 HashMap chaining 快 ~20-30% on get，getColor 每条伤害调两次。 */
+    private final Object2ObjectOpenHashMap<String, TextColor> damageColorMap = new Object2ObjectOpenHashMap<>();
 
     public static ClientDamageInfoManager getInstance() {
         return INSTANCE;
@@ -96,15 +98,16 @@ public class ClientDamageInfoManager {
         }
     }
 
-    public CopyOnWriteArrayList<DamageString> getDamageStringList() {
+    public ObjectArrayList<DamageString> getDamageStringList() {
         return damageStringList;
     }
 
-    public void setDamageColorMap(Map<String, TextColor> damageColorMap) {
-        this.damageColorMap = damageColorMap;
+    public Object2ObjectOpenHashMap<String, TextColor> getDamageColorMap() {
+        return damageColorMap;
     }
 
-    public Map<String, TextColor> getDamageColorMap() {
-        return damageColorMap;
+    public void setDamageColorMap(Map<String, TextColor> map) {
+        this.damageColorMap.clear();
+        this.damageColorMap.putAll(map);
     }
 }

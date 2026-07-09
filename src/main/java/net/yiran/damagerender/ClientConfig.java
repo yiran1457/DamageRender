@@ -13,6 +13,7 @@ public class ClientConfig {
     public static final ModConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_STRING;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_DISTANCE_SQ;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
+    public static final ModConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
 
     static {
 
@@ -34,6 +35,9 @@ public class ClientConfig {
         MERGE_MAX_AGE = BUILDER
                 .comment("合并生成在多少tick以内的文字")
                 .define("mergeMaxAge", 40.0);
+        DAMAGE_STRING_LIFE = BUILDER
+                .comment("伤害数字存活时间（tick）")
+                .defineInRange("damageStringLife", 30, 5, 600);
         SPEC = BUILDER.build();
 
     }

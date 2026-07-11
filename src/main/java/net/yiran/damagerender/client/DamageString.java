@@ -26,12 +26,26 @@ public class DamageString {
     /**
      * 合并放大步长：每次 mergeDamage 缩放因子乘以此值（+1%）。
      */
-    private static final float MERGE_SCALE_STEP = 1.01f;
+    private static final float MERGE_SCALE_STEP = 1.03f;
     private float scale;
     /**
      * 合并累积的额外缩放因子，初始 1.0，每次合并 ×1.01，受 MERGE_SCALE_MAX 上限约束。
      */
     private float mergeScale;
+    /**
+     * 合并弹跳缩放因子，1.0=无弹跳。合并时跳到 >1.0，每帧指数衰减回 1.0。
+     * 最终渲染缩放 = mergeScale × mergeBounceScale，弹跳叠加在合并累积之上。
+     */
+    private float mergeBounceScale;
+    /**
+     * 弹跳衰减率：每 tick 衰减为 BOUNCE_DECAY 倍（向 1.0 收敛），值越大回归越慢。
+     */
+    private static final float BOUNCE_DECAY = 0.85f;
+    /**
+     * 弹跳峰值系数：合并时 mergeBounceScale 设为 1 + (mergeScale-1) × 此值。
+     * 即弹跳幅度与当前 mergeScale 成正比——合并累积越大，弹跳越明显。
+     */
+    private static final float BOUNCE_PEAK_FACTOR = 0.5f;
     private int color;
     private int colorRgb;
 
@@ -41,9 +55,13 @@ public class DamageString {
     private float fadeStartLife;
     private static final float DRAG_FACTOR = 0.9f;
     private static final float HOVER_THRESHOLD = 0.001f;
-    /** 水平扩散动量幅度，构造与合并复用。 */
+    /**
+     * 水平扩散动量幅度，构造与合并复用。
+     */
     private static final float HORIZONTAL_SPEED = 0.2f;
-    /** 合并时新老坐标距离小于此值则不动量转移（飘字保持原动量），≥此值才朝新位置漂移。 */
+    /**
+     * 合并时新老坐标距离小于此值则不动量转移（飘字保持原动量），≥此值才朝新位置漂移。
+     */
     private static final float MERGE_AIM_THRESHOLD = 1f;
     private static final float FADE_START_RATIO = 0.4f;
     private static final float SHRINK_DURATION = 3f;
@@ -78,6 +96,7 @@ public class DamageString {
         this.fadeStartLife = SHRINK_DURATION;
         this.scale = RENDER_SCALE;
         this.mergeScale = scaleForMergeCount(mergeCount);
+        this.mergeBounceScale = 1f;
         this.colorRgb = color & 0x00FFFFFF;
         this.color = (0xFF << 24) | this.colorRgb;
         this.damageType = damageType;
@@ -107,6 +126,8 @@ public class DamageString {
         // 每次合并放大 1%，受配置上限约束
         float maxScale = ClientConfig.MERGE_SCALE_MAX.get().floatValue();
         this.mergeScale = Math.min(this.mergeScale * MERGE_SCALE_STEP, maxScale);
+        // 弹跳缩放：基于合并后的 mergeScale 额外放大，后续逐帧衰减回 1.0
+        this.mergeBounceScale = 1f + (this.mergeScale - 1f) * BOUNCE_PEAK_FACTOR;
         formatDamage();
         this.life = this.maxLife;
         this.color = (0xFF << 24) | this.colorRgb;
@@ -225,6 +246,15 @@ public class DamageString {
             this.x += this.vX * partialTick;
             this.y += this.vY * partialTick;
             this.z += this.vZ * partialTick;
+
+            // 弹跳缩放衰减：向 1.0 指数收敛，帧率无关
+            if (this.mergeBounceScale > 1f) {
+                // bounceDelta 每帧衰减，bounceScale = 1 + delta
+                float delta = this.mergeBounceScale - 1f;
+                delta *= (float) Math.pow(BOUNCE_DECAY, partialTick);
+                if (delta < 0.001f) delta = 0f;
+                this.mergeBounceScale = 1f + delta;
+            }
         }
 
         // 淡出阶段更新 alpha；否则 alpha 保持 255（构造器已设好）
@@ -248,9 +278,9 @@ public class DamageString {
         // 已死亡或完全透明则跳过渲染
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
-        // 缩小阶段额外缩放，叠加合并放大因子；多数飘字走 shrink=1 快路径
-        float shrink = (life < SHRINK_DURATION) ? life / SHRINK_DURATION : 1f;
-        float s = shrink * mergeScale;
+        // 缩小阶段额外缩放，叠加合并累积 + 弹跳缩放因子
+        float shrink = (life < SHRINK_DURATION) ? (life * 0.5f+ 3) / (SHRINK_DURATION + 3) : 1f;
+        float s = shrink * (mergeScale + mergeBounceScale - 1);
 
         Mat4Util.mulViewTranslateBaseScale(TMP_MATRIX, viewMatrix, baseRS, x, y, z, s);
 

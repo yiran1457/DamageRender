@@ -7,7 +7,7 @@
 - **Forge**：47.x（loader range `[47,)`）
 - **Java**：17
 - **mod_id**：`damagerender`
-- **版本**：见 `gradle.properties` 的 `mod_version`（当前 `1.3.1-beta3`）
+- **版本**：见 `gradle.properties` 的 `mod_version`（当前 `1.3.3`）
 - **作者**：`_yi_ran_`
 - **License**：All Rights Reserved
 
@@ -18,6 +18,7 @@
 ## 功能概览
 
 - 实体（生物等）受击时，在头顶向上飘出伤害数值，带初速度、阻尼、淡出、缩小动画。
+- 伤害数字使用自带纹理图集（0–9 + `.`）渲染，纹理路径可通过配置 / 命令切换，内置多套皮肤可 Tab 补全。
 - 治疗事件同样渲染（绿色，走 `heal` 旁路）；可通过配置开关关闭治疗数字显示。
 - **伤害合并**：同一实体、同一伤害类型的多条飘字会累加成一个数字，避免满屏重复数字。
 - **颜色映射**：按伤害类型（damage type）配置颜色，支持命令实时增删改查并持久化。
@@ -63,8 +64,9 @@ ClientEventHandler.render (RenderLevelStageEvent.AFTER_ENTITIES)
 | `UpdateConfigPacket` | 客户端 → 服务端，上报玩家可见距离 |
 | `ClientDamageInfoManager` | 客户端飘字列表 + `mergeIndex`（O(1) 合并查找） |
 | `DamageColorManager` | 伤害类型 → 颜色映射统一管理器：内存、JSON 编解码、文件持久化 |
-| `ClientEventHandler` | 渲染入口，每帧遍历飘字调用 `render` |
-| `DamageString` | 单个飘字：位置/速度/生命/颜色/缩放/文字缓存 |
+| `ClientEventHandler` | 渲染入口，每帧预算共享 `baseRS` 矩阵、遍历飘字调用 `render`、批量 flush |
+| `DamageString` | 单个飘字：位置/速度/生命/颜色/缩放/文字缓存；`render` 用复用矩阵绕过 PoseStack |
+| `DamageNumberRenderer` | 纹理图集渲染：字符→UV 查表、逐字符四边形顶点发射（复用 `Vector4f`，零分配）；纹理路径由配置决定 |
 | `Command` | 客户端命令，运行时调整配置 + 重载颜色映射 |
 
 ### 性能设计要点
@@ -74,8 +76,11 @@ ClientEventHandler.render (RenderLevelStageEvent.AFTER_ENTITIES)
 - **`mergeIndex`**：`Int2ObjectOpenHashMap<entityId, Object2ObjectOpenHashMap<typeKey, DamageString>>`，
   把跨批合并查找从 O(n) 降到 O(1)。
 - **fastutil 集合**：`ObjectArrayList`（无 range check / modCount）、`Object2ObjectOpenHashMap`（开放寻址，比 `HashMap` 链式快 ~20–30%）、`Object2IntOpenHashMap`（原始 int，无装箱）。
-- **单线程直绘**：`Font.drawInBatch` 本身已是批量操作，单飘字渲染仅一次矩阵变换 + 一次 drawInBatch；
-  实测几千飘字时多线程拆分反而因调度/同步开销更慢，故采用单线程直绘。
+- **纹理图集渲染**：伤害数字用自带的 0–9 + `.` 纹理图集（`DamageNumberRenderer.renderNumber`）逐字符发射四边形顶点，替代 `Font.drawInBatch`，省去字体贴图查找/布局开销。
+- **PoseStack 零分配优化**：渲染绕过 `PoseStack` 栈式变换，改用每帧预算一次的共享 `baseRS`（相机旋转 × 缩放，所有飘字共用）+ 每飘字复用的 `Matrix4f`：
+  - 原版每飘字 `pushPose`（复制 4×4 + 3×3 两个矩阵）+ `mulPose`（四元数转换 + 同时旋转 pose 与 normal）；
+  - 现在只 `set(viewMatrix)` 复制 4×4 + `translate` + `mul(baseRS)`，**不碰 normal 矩阵**（`RenderType.text` 无法线属性）、无栈分配、四元数→矩阵转换从每飘字一次降到每帧一次。
+  - 顶点发射用复用 `Vector4f` 就地 `mul(matrix)` 后喂 `vertex(double,double,double)`，避免 `VertexConsumer.vertex(Matrix4f,…)` 默认实现**每顶点 `new Vector4f`** 的分配（千飘字场景每帧省下上万次短命对象分配）。
 - **文字宽度缓存**：`DamageString.formatDamage()` 在内容变化时缓存 `halfWidth`，避免每帧重算 `font.width`。
 
 ---
@@ -93,6 +98,7 @@ ClientEventHandler.render (RenderLevelStageEvent.AFTER_ENTITIES)
 | `mergeMaxAge` | double | `40.0` | 跨 tick 合并：仅合并生成时间在此 tick 数以内的飘字 |
 | `damageStringLife` | int | `30` | 飘字存活时间（tick，范围 5–600） |
 | `showHealNumbers` | bool | `true` | 是否显示治疗数字 |
+| `texture` | string | `damagerender:textures/damagefont/number_0.png` | 伤害数字纹理资源路径（`namespace:path`）。纹理须为 0–9 与 `.` 共 11 个字符的水平图集，每字符 6×9 像素。切换后立即生效，无需重启 |
 
 ---
 
@@ -152,6 +158,7 @@ ClientEventHandler.render (RenderLevelStageEvent.AFTER_ENTITIES)
 | `mergeMaxAge [value]` | double ≥ 0 | 读取 / 设置合并年龄上限 |
 | `damageStringLife [value]` | int 5–600 | 读取 / 设置飘字存活时间 |
 | `showHealNumbers [value]` | bool | 读取 / 设置是否显示治疗数字 |
+| `texture [value]` | string(`namespace:path`) | 读取 / 设置伤害数字纹理路径，`<value>` 支持 Tab 补全（列出 mod 内置纹理）；设置时校验 `ResourceLocation` 格式，非法则提示失败 |
 | `setDamageColor set <type> <color>` | type(含补全)、color | 添加/覆盖伤害类型颜色 |
 | `setDamageColor remove <type>` | type(含补全) | 删除伤害类型颜色 |
 | `setDamageColor list` | — | 列出当前颜色映射 |
@@ -162,6 +169,7 @@ ClientEventHandler.render (RenderLevelStageEvent.AFTER_ENTITIES)
 ```
 /damagerender maxShowRender 256
 /damagerender showHealNumbers false
+/damagerender texture damagerender:textures/damagefont/number_1.png
 /damagerender setDamageColor set minecraft:in_fire #FF8800
 /damagerender setDamageColor remove magic
 /damagerender setDamageColor list
@@ -224,6 +232,7 @@ src/main/java/net/yiran/damagerender/
 │   ├── ClientDamageInfoManager.java   # 飘字列表 + mergeIndex
 │   ├── DamageColorManager.java        # 颜色映射管理（JSON 编解码 / 持久化 / 查询 / 修改）
 │   ├── ClientEventHandler.java        # 渲染入口
+│   ├── DamageNumberRenderer.java      # 纹理图集渲染（字符→UV、零分配顶点发射）
 │   ├── DamageString.java              # 单个飘字
 │   └── Command.java                   # 客户端命令
 ├── server/

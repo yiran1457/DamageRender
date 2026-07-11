@@ -1,12 +1,10 @@
 package net.yiran.damagerender.client;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
 import net.yiran.damagerender.ClientConfig;
+import org.joml.Matrix4f;
 
 public class DamageString {
     private float x;
@@ -22,6 +20,8 @@ public class DamageString {
     private float life;
     private float maxLife;
     private static final float INITIAL_UPWARD_SPEED = 0.6f;
+    /** 飘字基础缩放，所有实例固定为此值（构造时设定，运行时不变）。供外层预算 baseView 复用。 */
+    public static final float RENDER_SCALE = 0.04f;
     private float scale;
     private int color;
     private int colorRgb;
@@ -34,6 +34,12 @@ public class DamageString {
     private static final float HOVER_THRESHOLD = 0.001f;
     private static final float FADE_START_RATIO = 0.4f;
     private static final float SHRINK_DURATION = 20f;
+
+    /**
+     * 每飘字变换复用矩阵，避免 PoseStack.pushPose 复制 4×4+3×3 矩阵与 mulPose 旋转 normal 矩阵的开销。
+     * 渲染在客户端主线程单线程执行，复用安全。
+     */
+    private static final Matrix4f TMP_MATRIX = new Matrix4f();
 
     public DamageString(int entityId, float x, float y, float z, float damage, int color, String damageType) {
         this.entityId = entityId;
@@ -48,7 +54,7 @@ public class DamageString {
         this.life = ClientConfig.DAMAGE_STRING_LIFE.get();
         this.maxLife = this.life;
         this.fadeStartLife = this.maxLife * FADE_START_RATIO;
-        this.scale = 0.04f;
+        this.scale = RENDER_SCALE;
         this.colorRgb = color & 0x00FFFFFF;
         this.color = (0xFF << 24) | this.colorRgb;
         this.damageType = damageType;
@@ -108,8 +114,8 @@ public class DamageString {
         } else {
             this.displayText = String.format("%.0f", amount);
         }
-        // 缓存文字水平居中偏移，避免每帧 render 重复调用 font.width
-        this.halfWidth = -Minecraft.getInstance().font.width(this.displayText) / 2f;
+        // 使用纹理图集宽度计算居中偏移，替代 font.width
+        this.halfWidth = -DamageNumberRenderer.getTextWidth(this.displayText) / 2f;
     }
 
     private void update(float partialTick) {
@@ -136,38 +142,45 @@ public class DamageString {
         }
     }
 
-    public void render(PoseStack poseStack, MultiBufferSource bufferSource, Minecraft mc, float partialTick) {
+    /**
+     * 渲染单个飘字。
+     *
+     * <p>不再用 PoseStack 栈式变换，但保持与原版同构的 post-multiply 顺序，确保数学等价：
+     * <pre>
+     *   原版:  viewMatrix(pushPose 复制) · translate(x,y,z) · mulPose(cam) · scale(-s,s,-s)
+     *   现在:  TMP.set(viewMatrix) · translate(x,y,z) · mul(baseRS)   [baseRS = R·S]
+     * </pre>
+     * 区别仅是：只复制 4×4 矩阵（无 normal 矩阵）、无栈分配、无四元数→矩阵转换（baseRS 每帧预算一次共享）。
+     *
+     * @param viewMatrix 外层 PoseStack 当前矩阵（已含 translate(-cameraPos)），循环内复用其引用
+     * @param baseRS     循环外预算的 R·S（相机旋转×缩放，含 Y 翻转），所有飘字共享
+     * @param consumer   顶点消费者
+     * @param partialTick 帧插值
+     */
+    public void render(Matrix4f viewMatrix, Matrix4f baseRS, VertexConsumer consumer, float partialTick) {
         update(partialTick);
 
         // 已死亡或完全透明则跳过渲染（避免无谓的矩阵变换和顶点生成）
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
-        poseStack.pushPose();
-        poseStack.translate(x, y, z);
-        // 用相机朝向四元数让文字面朝玩家；与官方 EntityRenderer.renderNameTag 一致，
-        // 配合 scale(x,-x,x) 的负 Y 缩放把文字翻正（cameraOrientation 会上下颠倒文字）。
-        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+        // TMP = viewMatrix · T(x,y,z) · baseRS，post-multiply 顺序与原版 PoseStack 同构
+        TMP_MATRIX.set(viewMatrix).translate(x, y, z).mul(baseRS);
 
-        float renderScale = scale;
+        // 缩小阶段（life<20）额外 post-multiply 动态缩放；多数飘字走快路径不进此分支。
+        // 等价于原 scale(-renderScale, renderScale, -renderScale) 中 renderScale = scale*(life/20)。
         if (life < SHRINK_DURATION) {
-            renderScale = scale * (life / SHRINK_DURATION);
+            TMP_MATRIX.scale(life / SHRINK_DURATION);
         }
-        poseStack.scale(-renderScale, -renderScale, -renderScale);
 
-        Font font = mc.font;
-        font.drawInBatch(
+        // 使用纹理图集渲染伤害数字，替代 Font.drawInBatch
+        DamageNumberRenderer.renderNumber(
+                TMP_MATRIX,
+                consumer,
                 displayText,
                 halfWidth,
-                -4f,
+                -DamageNumberRenderer.CHAR_HEIGHT / 2f,
                 this.color,
-                true,
-                poseStack.last().pose(),
-                bufferSource,
-                Font.DisplayMode.NORMAL,
-                LightTexture.FULL_BRIGHT,
                 LightTexture.FULL_BRIGHT
         );
-
-        poseStack.popPose();
     }
 }

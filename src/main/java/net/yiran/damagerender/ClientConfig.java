@@ -14,6 +14,7 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
+    public static final ForgeConfigSpec.ConfigValue<String> TEXTURE;
 
     static {
 
@@ -38,6 +39,11 @@ public class ClientConfig {
         SHOW_HEAL_NUMBERS = BUILDER
                 .comment("是否显示治疗数字")
                 .define("showHealNumbers", true);
+        TEXTURE = BUILDER
+                .comment("伤害数字使用的纹理资源路径（namespace:path 格式，如 damagerender:textures/damagefont/number.png）",
+                        "纹理需为 0-9 与 '.' 共 11 个字符的水平图集，每字符 6×9 像素",
+                        "切换后立即生效，无需重启游戏")
+                .define("texture", "damagerender:textures/damagefont/number_0.png");
         SPEC = BUILDER.build();
 
     }

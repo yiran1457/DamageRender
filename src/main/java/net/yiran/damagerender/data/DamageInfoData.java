@@ -1,5 +1,7 @@
 package net.yiran.damagerender.data;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
@@ -54,6 +56,6 @@ public record DamageInfoData(int entityId, @Nullable ResourceLocation damageType
      */
     public String msgId() {
         if (fallbackKey != null) return fallbackKey;
-        return damageTypeLocation != null ? damageTypeLocation.getPath() : "unknown";
+        return damageTypeLocation != null ? Minecraft.getInstance().getConnection().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).get(damageTypeLocation).msgId() : "unknown";
     }
 }

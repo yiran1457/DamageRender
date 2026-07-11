@@ -39,6 +39,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             double value = DoubleArgumentType.getDouble(ctx, "value");
                                                             ClientConfig.MIN_VALUE_DISPLAY.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 minValueDisplay 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -56,6 +57,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             int value = IntegerArgumentType.getInteger(ctx, "value");
                                                             ClientConfig.MAX_SHOW_RENDER.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 maxShowRender 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -73,6 +75,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             boolean value = BoolArgumentType.getBool(ctx, "value");
                                                             ClientConfig.ENABLE_COMBINE_STRING.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 enableCombineString 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -90,6 +93,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             double value = DoubleArgumentType.getDouble(ctx, "value");
                                                             ClientConfig.MERGE_MAX_AGE.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 mergeMaxAge 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -107,6 +111,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             int value = IntegerArgumentType.getInteger(ctx, "value");
                                                             ClientConfig.DAMAGE_STRING_LIFE.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 damageStringLife 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -124,6 +129,7 @@ public class Command {
                                                         .executes(ctx -> {
                                                             boolean value = BoolArgumentType.getBool(ctx, "value");
                                                             ClientConfig.SHOW_HEAL_NUMBERS.set(value);
+                                                            ClientConfig.SPEC.save();
                                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 设置为 : " + value), false);
                                                             return 1;
                                                         })
@@ -131,6 +137,29 @@ public class Command {
                                         .executes(ctx -> {
                                             boolean value = ClientConfig.SHOW_HEAL_NUMBERS.get();
                                             ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("texture")
+                                        .then(
+                                                Commands.argument("value", STRING_ALLOWING_COLON)
+                                                        .suggests(TEXTURE_SUGGESTIONS)
+                                                        .executes(ctx -> {
+                                                            String value = ctx.getArgument("value", String.class);
+                                                            if (net.minecraft.resources.ResourceLocation.tryParse(value) == null) {
+                                                                ctx.getSource().sendFailure(Component.literal("无效的资源路径 : " + value + "（需为 namespace:path 格式）"));
+                                                                return 0;
+                                                            }
+                                                            ClientConfig.TEXTURE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 texture 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            String value = ClientConfig.TEXTURE.get();
+                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 texture 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -234,6 +263,26 @@ public class Command {
                 }
                 candidates.add("heal");
                 candidates.addAll(DamageColorManager.getInstance().getMap().keySet());
+                return SharedSuggestionProvider.suggest(candidates, builder);
+            };
+
+    /**
+     * texture 参数的 Tab 补全：列出 mod 内置纹理（assets/damagerender/textures/*.png），
+     * 形如 {@code damagerender:textures/damagefont/number.png}，便于切换皮肤。
+     */
+    private static final SuggestionProvider<CommandSourceStack> TEXTURE_SUGGESTIONS =
+            (ctx, builder) -> {
+                java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
+                try {
+                    net.minecraft.server.packs.resources.ResourceManager rm =
+                            net.minecraft.client.Minecraft.getInstance().getResourceManager();
+                    java.util.Collection<net.minecraft.resources.ResourceLocation> textures =
+                            rm.listResources("textures", rl ->
+                                    rl.getNamespace().equals("damagerender") && rl.getPath().endsWith(".png"))
+                                    .keySet();
+                    textures.forEach(rl -> candidates.add(rl.toString()));
+                } catch (Exception ignored) {
+                }
                 return SharedSuggestionProvider.suggest(candidates, builder);
             };
 

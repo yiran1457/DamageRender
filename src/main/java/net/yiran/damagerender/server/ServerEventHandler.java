@@ -14,17 +14,14 @@ public class ServerEventHandler {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDamage(LivingDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        var source = event.getSource();
-        if (event.getAmount() <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
+        if (event.getAmount() <= 0) return;
 
         var data = new DamageInfoData(
                 entity.getId(),
-                source.typeHolder().unwrapKey().get().location(),
-                null,
+                event.getSource().getMsgId(),
                 entity.position().add(0, entity.getBbHeight(), 0),
                 event.getAmount()
         );
-        // 攒入缓冲，本 tick 末尾合批发送
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }
 
@@ -33,15 +30,15 @@ public class ServerEventHandler {
         LivingEntity entity = event.getEntity();
         if (event.getAmount() <= 0) return;
 
-        var pos = entity.position().add(0, entity.getBbHeight(), 0);
-        // heal 不是注册的 DamageType，无合法 location，走 fallbackKey 旁路
-        var data = new DamageInfoData(entity.getId(), null, "heal", pos, event.getAmount());
+        var data = new DamageInfoData(
+                entity.getId(),
+                "heal",
+                entity.position().add(0, entity.getBbHeight(), 0),
+                event.getAmount()
+        );
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }
 
-    /**
-     * 每 tick 末尾：把本 tick 攒下的伤害信息按玩家就近过滤后合批发送。
-     */
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {

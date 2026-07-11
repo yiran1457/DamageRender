@@ -10,7 +10,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_name + "-1.20.1-Forge"
+    archivesName = mod_name + "-1.19.2-Forge"
 }
 
 // Mojang ships Java 17 to end users in 1.18+, so your mod should target Java 17.
@@ -86,9 +86,10 @@ mixin {
 dependencies {
 
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    implementation fg.deobf("curse.maven:modern-ui-352491:6199942")
-    implementation fg.deobf("curse.maven:jei-238222:6600311")
-    implementation fg.deobf("curse.maven:ibe-editor-256822:4994072")
+    // TODO: 更新以下依赖到 1.19.2 对应版本
+    //implementation fg.deobf("curse.maven:modern-ui-352491:6199942")
+    //implementation fg.deobf("curse.maven:jei-238222:6600311")
+    //implementation fg.deobf("curse.maven:ibe-editor-256822:4994072")
     //implementation fg.deobf("curse.maven:mutil-351914:6418901")
     //annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }

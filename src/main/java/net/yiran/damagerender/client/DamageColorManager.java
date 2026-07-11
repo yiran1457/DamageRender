@@ -10,7 +10,6 @@ import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.TextColor;
 import net.minecraftforge.fml.loading.FMLPaths;
-import net.yiran.damagerender.data.DamageInfoData;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -25,10 +24,9 @@ import java.util.Map;
  * 默认颜色表、JSON 编解码器、以及文件持久化读写。所有颜色映射相关操作都集中在此类，避免逻辑分散。
  *
  * <h3>查找规则</h3>
- * {@link #getColor(DamageInfoData)} 按以下顺序查找：
+ * {@link #getColor(String)} 按以下顺序查找：
  * <ol>
- *   <li>{@link DamageInfoData#damageTypeKey()} — 完整 key（如 "minecraft:in_fire"）</li>
- *   <li>{@link DamageInfoData#msgId()} — path 兜底（如 "in_fire"）</li>
+ *   <li>{@link #map} 中精确匹配 typeKey</li>
  *   <li>{@link #DEFAULT_COLOR} — 最终兜底（#FF5533）</li>
  * </ol>
  */
@@ -160,12 +158,13 @@ public class DamageColorManager {
     // ---- 查询 --------------------------------------------------------------------
 
     /**
-     * 根据伤害信息查找对应颜色：typeKey → msgId → DEFAULT_COLOR。
+     * 根据伤害类型标识查找对应颜色。
+     *
+     * @param typeKey 伤害类型标识（msgId），如 "inFire"、"mob"、"heal"
+     * @return 映射的颜色，未找到时返回 {@link #DEFAULT_COLOR}
      */
-    public TextColor getColor(DamageInfoData damageInfo) {
-        TextColor color = map.get(damageInfo.damageTypeKey());
-        if (color != null) return color;
-        color = map.get(damageInfo.msgId());
+    public TextColor getColor(String typeKey) {
+        TextColor color = map.get(typeKey);
         return color != null ? color : DEFAULT_COLOR;
     }
 

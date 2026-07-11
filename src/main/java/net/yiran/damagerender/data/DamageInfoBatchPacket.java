@@ -16,15 +16,13 @@ import java.util.function.Supplier;
 
 /**
  * 服务端 -> 客户端：一个 tick 内对同一玩家可见的多条伤害信息合批发送，减少发包次数。
- * 客户端收包时先按 (entityId, damageType) 预合并，同实体同类型的伤害累加 amount，
+ * 客户端收包时先按 (entityId, typeKey) 预合并，同实体同类型的伤害累加 amount，
  * 只把预合并后的条目加入 manager，避免上百条同类型伤害逐条 add 导致卡顿。
  */
 public class DamageInfoBatchPacket {
     public List<DamageInfoData> entries;
 
-    public DamageInfoBatchPacket() {
-
-    }
+    public DamageInfoBatchPacket() {}
 
     public DamageInfoBatchPacket(List<DamageInfoData> entries) {
         this.entries = entries;
@@ -48,7 +46,6 @@ public class DamageInfoBatchPacket {
 
     /**
      * 预合并中间结果：累加 amount，保留首次出现的位置和颜色。
-     * typeKey 即外层 map 的 key，无需重复存储。
      */
     private record MergedEntry(double amount, Vec3 pos, int color) {}
 
@@ -60,26 +57,24 @@ public class DamageInfoBatchPacket {
             boolean showHeal = ClientConfig.SHOW_HEAL_NUMBERS.get();
 
             if (ClientConfig.ENABLE_COMBINE_STRING.get()) {
-                // 预合并：按 (entityId, damageType) 累加 amount，O(n) 一次遍历。
-                // 同一 tick 内的伤害无条件累加（不受 MERGE_MAX_AGE 限制），是 manager.add 合并之外的补充。
+                // 预合并：按 (entityId, typeKey) 累加 amount，O(n) 一次遍历
                 var mergeMap = new Int2ObjectOpenHashMap<Object2ObjectOpenHashMap<String, MergedEntry>>();
                 for (DamageInfoData data : packet.entries) {
                     double amount = data.amount();
                     if (Math.abs(amount) < minValue) continue;
-                    if (!showHeal && "heal".equals(data.fallbackKey())) continue;
+                    if (!showHeal && "heal".equals(data.typeKey())) continue;
 
                     int entityId = data.entityId();
-                    String typeKey = data.damageTypeKey();
+                    String typeKey = data.typeKey();
                     var typeMap = mergeMap.computeIfAbsent(entityId, k -> new Object2ObjectOpenHashMap<>());
                     MergedEntry existing = typeMap.get(typeKey);
                     if (existing != null) {
-                        // 累加 amount，保留首次位置和颜色
                         typeMap.put(typeKey, new MergedEntry(existing.amount() + amount, existing.pos(), existing.color()));
                     } else {
-                        typeMap.put(typeKey, new MergedEntry(amount, data.pos(), DamageColorManager.getInstance().getColor(data).getValue()));
+                        typeMap.put(typeKey, new MergedEntry(amount, data.pos(), DamageColorManager.getInstance().getColor(typeKey).getValue()));
                     }
                 }
-                // 把预合并结果加入 manager；本批内同 (entityId, typeKey) 已唯一，add 内不会再二次合并
+                // 把预合并结果加入 manager
                 for (var entityEntry : mergeMap.int2ObjectEntrySet()) {
                     int entityId = entityEntry.getIntKey();
                     for (var typeEntry : entityEntry.getValue().object2ObjectEntrySet()) {
@@ -99,15 +94,15 @@ public class DamageInfoBatchPacket {
                 for (DamageInfoData data : packet.entries) {
                     double amount = data.amount();
                     if (Math.abs(amount) < minValue) continue;
-                    if (!showHeal && "heal".equals(data.fallbackKey())) continue;
+                    if (!showHeal && "heal".equals(data.typeKey())) continue;
 
                     Vec3 pos = data.pos();
                     manager.add(new DamageString(
                             data.entityId(),
                             (float) pos.x(), (float) pos.y(), (float) pos.z(),
                             (float) amount,
-                            DamageColorManager.getInstance().getColor(data).getValue(),
-                            data.damageTypeKey()
+                            DamageColorManager.getInstance().getColor(data.typeKey()).getValue(),
+                            data.typeKey()
                     ));
                 }
             }

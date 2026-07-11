@@ -1,11 +1,11 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Matrix4f;
+import com.mojang.math.Vector4f;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.yiran.damagerender.ClientConfig;
-import org.joml.Matrix4f;
-import org.joml.Vector4f;
 
 /**
  * 使用纹理图集渲染伤害数字，替代 Font.drawInBatch。
@@ -31,7 +31,7 @@ public class DamageNumberRenderer {
     private static final byte[] CHAR_TO_INDEX = new byte[128];
 
     /**
-     * 顶点变换复用向量，避免每个顶点 {@code new Vector4f}（VertexConsumer.vertex(Matrix4f,...) 默认实现会分配）。
+     * 顶点变换复用向量，避免每个顶点 new Vector4f（VertexConsumer.vertex(Matrix4f,...) 默认实现会分配）。
      * 渲染在客户端主线程单线程执行，复用安全。
      */
     private static final Vector4f TMP_VERTEX = new Vector4f();
@@ -61,9 +61,6 @@ public class DamageNumberRenderer {
 
     /**
      * 获取当前纹理对应的文字 RenderType。
-     *
-     * <p>{@link RenderType#text(ResourceLocation)} 用 {@code Util.memoize} 按 ResourceLocation 缓存，
-     * 不同纹理路径返回各自缓存的 RenderType，切换纹理只需传入不同的 ResourceLocation。
      *
      * @return 与当前纹理绑定的 RenderType（POSITION_COLOR_TEX_LIGHTMAP，支持半透明和光照）
      */
@@ -107,13 +104,17 @@ public class DamageNumberRenderer {
             float y1 = y + CHAR_HEIGHT;
 
             // 用复用的 Vector4f 就地变换，避免 vertex(Matrix4f,...) 默认实现每顶点 new Vector4f
-            TMP_VERTEX.set(x0, y0, 0, 1).mul(matrix);
+            TMP_VERTEX.set(x0, y0, 0, 1);
+            TMP_VERTEX.transform(matrix);
             consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMin, 1f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x1, y0, 0, 1).mul(matrix);
+            TMP_VERTEX.set(x1, y0, 0, 1);
+            TMP_VERTEX.transform(matrix);
             consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMax, 1f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x1, y1, 0, 1).mul(matrix);
+            TMP_VERTEX.set(x1, y1, 0, 1);
+            TMP_VERTEX.transform(matrix);
             consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMax, 0f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x0, y1, 0, 1).mul(matrix);
+            TMP_VERTEX.set(x0, y1, 0, 1);
+            TMP_VERTEX.transform(matrix);
             consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMin, 0f).uv2(packedLight).endVertex();
 
             cursorX += CHAR_WIDTH;

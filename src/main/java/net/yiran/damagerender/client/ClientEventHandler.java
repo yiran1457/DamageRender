@@ -2,6 +2,8 @@ package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Matrix4f;
+import com.mojang.math.Quaternion;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -12,8 +14,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.UpdateConfigPacket;
-import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 
 /**
  * 飘字渲染入口。
@@ -32,27 +32,29 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) return;
 
         PoseStack poseStack = event.getPoseStack();
-        Camera camera = event.getCamera();
-        Vec3 cameraPos = camera.getPosition();
         Minecraft mc = Minecraft.getInstance();
+        Camera camera = mc.gameRenderer.getMainCamera();
+        Vec3 cameraPos = camera.getPosition();
 
         float partialTick = mc.getDeltaFrameTime();
         // 外层世界→相机相对平移（view 的一部分，原版同款）。顶点矩阵需继承此变换。
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         // viewMatrix = T(-cam)，循环内每个飘字在其基础上 post-multiply 自身变换
-        Matrix4f viewMatrix = poseStack.last().pose();
+        Matrix4f viewMatrix = new Matrix4f(poseStack.last().pose());
 
         // baseRS = R(相机朝向) * S(Y翻转) * S(固定缩放)，对所有飘字共享，每帧算一次。
-        // post-multiply 语义与原 DamageString 的 mulPose(cameraOrientation) + scale(-s,s,-s) 同构。
-        Quaternionf cam = mc.getEntityRenderDispatcher().cameraOrientation();
-        Matrix4f baseRS = new Matrix4f()
-                .rotate(cam)
-                .scale(-1f, 1f, -1f)
-                .scale(DamageString.RENDER_SCALE);
+        Quaternion cam = mc.getEntityRenderDispatcher().cameraOrientation();
+        Matrix4f baseRS = new Matrix4f();
+        baseRS.setIdentity();
+        // 旋转矩阵 R = 相机朝向
+        baseRS.multiply(new Matrix4f(cam));
+        // 缩放：Y翻转 * 固定缩放
+        float s = DamageString.RENDER_SCALE;
+        baseRS.multiply(Matrix4f.createScaleMatrix(-s, s, -s));
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
         VertexConsumer consumer = bufferSource.getBuffer(DamageNumberRenderer.getRenderType());

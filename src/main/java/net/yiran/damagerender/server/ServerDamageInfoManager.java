@@ -75,7 +75,7 @@ public class ServerDamageInfoManager {
         for (int i = 0; i < playerCount; i++) {
             ServerPlayer p = players.get(i);
             playerArr[i] = p;
-            playerLevels[i] = p.level();
+            playerLevels[i] = p.getLevel();
             playerUuids[i] = p.getUUID();
             playerDistances[i] = getDistance(p.getStringUUID());
         }
@@ -86,7 +86,7 @@ public class ServerDamageInfoManager {
         for (int i = 0, len = pending.size(); i < len; i++) {
             PendingEntry entry = pending.get(i);
             LivingEntity entity = entry.entity;
-            Level level = entity.level();
+            Level level = entity.getLevel();
             for (int j = 0; j < playerCount; j++) {
                 if (!playerLevels[j].equals(level)) continue;
                 double dist = playerArr[j].distanceTo(entity);

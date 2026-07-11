@@ -15,9 +15,7 @@ import java.util.function.Supplier;
 public class DamageInfoPacket {
     public DamageInfoData data;
 
-    public DamageInfoPacket() {
-
-    }
+    public DamageInfoPacket() {}
 
     public DamageInfoPacket(DamageInfoData damageInfoData) {
         this.data = damageInfoData;
@@ -36,19 +34,15 @@ public class DamageInfoPacket {
         ctx.enqueueWork(() -> {
             double amount = packet.data.amount();
             if (Math.abs(amount) < ClientConfig.MIN_VALUE_DISPLAY.get()) return;
-            if (!ClientConfig.SHOW_HEAL_NUMBERS.get() && "heal".equals(packet.data.fallbackKey())) return;
+            if (!ClientConfig.SHOW_HEAL_NUMBERS.get() && "heal".equals(packet.data.typeKey())) return;
 
             var vec3 = packet.data.pos();
-            int color = DamageColorManager.getInstance().getColor(packet.data).getValue();
-
-            String typeKey = packet.data.damageTypeKey();
-
             DamageString damageString = new DamageString(
                     packet.data.entityId(),
                     (float) vec3.x, (float) vec3.y, (float) vec3.z,
                     (float) amount,
-                    color,
-                    typeKey
+                    DamageColorManager.getInstance().getColor(packet.data.typeKey()).getValue(),
+                    packet.data.typeKey()
             );
             ClientDamageInfoManager.getInstance().add(damageString);
         });

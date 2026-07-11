@@ -11,7 +11,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
@@ -40,13 +39,13 @@ public class Command {
                                                             double value = DoubleArgumentType.getDouble(ctx, "value");
                                                             ClientConfig.MIN_VALUE_DISPLAY.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 minValueDisplay 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 minValueDisplay 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             double value = ClientConfig.MIN_VALUE_DISPLAY.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 minValueDisplay 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 minValueDisplay 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -58,13 +57,13 @@ public class Command {
                                                             int value = IntegerArgumentType.getInteger(ctx, "value");
                                                             ClientConfig.MAX_SHOW_RENDER.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 maxShowRender 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 maxShowRender 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             int value = ClientConfig.MAX_SHOW_RENDER.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 maxShowRender 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 maxShowRender 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -76,13 +75,13 @@ public class Command {
                                                             boolean value = BoolArgumentType.getBool(ctx, "value");
                                                             ClientConfig.ENABLE_COMBINE_STRING.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 enableCombineString 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 enableCombineString 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             boolean value = ClientConfig.ENABLE_COMBINE_STRING.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 enableCombineString 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 enableCombineString 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -94,13 +93,13 @@ public class Command {
                                                             double value = DoubleArgumentType.getDouble(ctx, "value");
                                                             ClientConfig.MERGE_MAX_AGE.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 mergeMaxAge 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeMaxAge 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             double value = ClientConfig.MERGE_MAX_AGE.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 mergeMaxAge 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeMaxAge 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -112,13 +111,13 @@ public class Command {
                                                             int value = IntegerArgumentType.getInteger(ctx, "value");
                                                             ClientConfig.DAMAGE_STRING_LIFE.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 damageStringLife 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 damageStringLife 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             int value = ClientConfig.DAMAGE_STRING_LIFE.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 damageStringLife 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 damageStringLife 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -130,13 +129,13 @@ public class Command {
                                                             boolean value = BoolArgumentType.getBool(ctx, "value");
                                                             ClientConfig.SHOW_HEAL_NUMBERS.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 showHealNumbers 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             boolean value = ClientConfig.SHOW_HEAL_NUMBERS.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 showHealNumbers 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 showHealNumbers 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -153,13 +152,13 @@ public class Command {
                                                             }
                                                             ClientConfig.TEXTURE.set(value);
                                                             ClientConfig.SPEC.save();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 texture 设置为 : " + value), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 texture 设置为 : " + value), false);
                                                             return 1;
                                                         })
                                         )
                                         .executes(ctx -> {
                                             String value = ClientConfig.TEXTURE.get();
-                                            ctx.getSource().sendSuccess(() -> Component.literal("配置项 texture 值为 : " + value), false);
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 texture 值为 : " + value), false);
                                             return 1;
                                         })
                         )
@@ -169,7 +168,7 @@ public class Command {
                                                 Commands.literal("reload")
                                                         .executes(ctx -> {
                                                             DamageColorManager.getInstance().reload();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("已重载伤害颜色映射"), false);
+                                                            ctx.getSource().sendSuccess(Component.literal("已重载伤害颜色映射"), false);
                                                             return 1;
                                                         })
                                         )
@@ -182,7 +181,7 @@ public class Command {
                                                                             String key = ctx.getArgument("damageType", String.class);
                                                                             boolean removed = DamageColorManager.getInstance().remove(key);
                                                                             if (removed) {
-                                                                                ctx.getSource().sendSuccess(() -> Component.literal("已移除伤害颜色 : " + key), false);
+                                                                                ctx.getSource().sendSuccess(Component.literal("已移除伤害颜色 : " + key), false);
                                                                                 return 1;
                                                                             }
                                                                             ctx.getSource().sendFailure(Component.literal("未找到伤害类型 : " + key));
@@ -195,12 +194,12 @@ public class Command {
                                                         .executes(ctx -> {
                                                             var map = DamageColorManager.getInstance().getMap();
                                                             if (map.isEmpty()) {
-                                                                ctx.getSource().sendSuccess(() -> Component.literal("当前颜色映射为空"), false);
+                                                                ctx.getSource().sendSuccess(Component.literal("当前颜色映射为空"), false);
                                                                 return 1;
                                                             }
                                                             map.forEach((k, v) ->
-                                                                    ctx.getSource().sendSuccess(() -> Component.literal(k + " : " + v.serialize()), false));
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("共 " + map.size() + " 项"), false);
+                                                                    ctx.getSource().sendSuccess(Component.literal(k + " : " + v.serialize()), false));
+                                                            ctx.getSource().sendSuccess(Component.literal("共 " + map.size() + " 项"), false);
                                                             return 1;
                                                         })
                                         )
@@ -218,7 +217,7 @@ public class Command {
                                                                                 return 0;
                                                                             }
                                                                             DamageColorManager.getInstance().put(key, color);
-                                                                            ctx.getSource().sendSuccess(() -> Component.literal("伤害颜色 " + key + " 设置为 : " + color.serialize()), false);
+                                                                            ctx.getSource().sendSuccess(Component.literal("伤害颜色 " + key + " 设置为 : " + color.serialize()), false);
                                                                             return 1;
                                                                         })
                                                         )
@@ -248,19 +247,12 @@ public class Command {
     };
 
     /**
-     * damageType 参数的 Tab 补全：合并 DamageType 注册表 location、heal 兜底键、当前颜色映射已有键，去重。
+     * damageType 参数的 Tab 补全：当前颜色映射已有键 + heal 兜底键，去重。
+     * 1.19.2 中没有 DamageType 注册表，无法从注册表动态获取。
      */
     private static final SuggestionProvider<CommandSourceStack> DAMAGE_TYPE_SUGGESTIONS =
             (ctx, builder) -> {
                 Set<String> candidates = new LinkedHashSet<>();
-                try {
-                    // registryAccess 在单机未载入/未连接时可能不可用，静默兜底
-                    ctx.getSource().registryAccess()
-                            .registry(Registries.DAMAGE_TYPE)
-                            .ifPresent(reg -> reg.registryKeySet()
-                                    .forEach(rk -> candidates.add(rk.location().toString())));
-                } catch (Exception ignored) {
-                }
                 candidates.add("heal");
                 candidates.addAll(DamageColorManager.getInstance().getMap().keySet());
                 return SharedSuggestionProvider.suggest(candidates, builder);

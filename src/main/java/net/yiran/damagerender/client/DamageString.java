@@ -1,10 +1,10 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Matrix4f;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.util.Mth;
 import net.yiran.damagerender.ClientConfig;
-import org.joml.Matrix4f;
 
 public class DamageString {
     private float x;
@@ -19,7 +19,7 @@ public class DamageString {
     private float halfWidth;
     private float life;
     private float maxLife;
-    private static final float INITIAL_UPWARD_SPEED = 0.6f;
+    private static final float INITIAL_UPWARD_SPEED = 1.2f;
     /** 飘字基础缩放，所有实例固定为此值（构造时设定，运行时不变）。供外层预算 baseView 复用。 */
     public static final float RENDER_SCALE = 0.04f;
     private float scale;
@@ -145,13 +145,6 @@ public class DamageString {
     /**
      * 渲染单个飘字。
      *
-     * <p>不再用 PoseStack 栈式变换，但保持与原版同构的 post-multiply 顺序，确保数学等价：
-     * <pre>
-     *   原版:  viewMatrix(pushPose 复制) · translate(x,y,z) · mulPose(cam) · scale(-s,s,-s)
-     *   现在:  TMP.set(viewMatrix) · translate(x,y,z) · mul(baseRS)   [baseRS = R·S]
-     * </pre>
-     * 区别仅是：只复制 4×4 矩阵（无 normal 矩阵）、无栈分配、无四元数→矩阵转换（baseRS 每帧预算一次共享）。
-     *
      * @param viewMatrix 外层 PoseStack 当前矩阵（已含 translate(-cameraPos)），循环内复用其引用
      * @param baseRS     循环外预算的 R·S（相机旋转×缩放，含 Y 翻转），所有飘字共享
      * @param consumer   顶点消费者
@@ -164,12 +157,14 @@ public class DamageString {
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
         // TMP = viewMatrix · T(x,y,z) · baseRS，post-multiply 顺序与原版 PoseStack 同构
-        TMP_MATRIX.set(viewMatrix).translate(x, y, z).mul(baseRS);
+        TMP_MATRIX.load(viewMatrix);
+        TMP_MATRIX.multiply(com.mojang.math.Matrix4f.createTranslateMatrix(x, y, z));
+        TMP_MATRIX.multiply(baseRS);
 
         // 缩小阶段（life<20）额外 post-multiply 动态缩放；多数飘字走快路径不进此分支。
-        // 等价于原 scale(-renderScale, renderScale, -renderScale) 中 renderScale = scale*(life/20)。
         if (life < SHRINK_DURATION) {
-            TMP_MATRIX.scale(life / SHRINK_DURATION);
+            float s = life / SHRINK_DURATION;
+            TMP_MATRIX.multiply(com.mojang.math.Matrix4f.createScaleMatrix(s, s, s));
         }
 
         // 使用纹理图集渲染伤害数字，替代 Font.drawInBatch

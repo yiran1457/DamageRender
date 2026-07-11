@@ -8,10 +8,14 @@ import net.yiran.damagerender.ClientConfig;
 public class ClientDamageInfoManager {
     private static final ClientDamageInfoManager INSTANCE = new ClientDamageInfoManager();
 
-    /** 实体合并时使用的固定 typeKey，颜色用默认色。 */
+    /**
+     * 实体合并时使用的固定 typeKey，颜色用默认色。
+     */
     private static final String COMBINED_KEY = "combined";
 
-    /** 飘字列表：ObjectArrayList 比 java.util.ArrayList 省 range check 和 modCount，每帧遍历数千次有收益。 */
+    /**
+     * 飘字列表：ObjectArrayList 比 java.util.ArrayList 省 range check 和 modCount，每帧遍历数千次有收益。
+     */
     private final ObjectArrayList<DamageString> damageStringList = new ObjectArrayList<>();
 
     /**
@@ -31,7 +35,7 @@ public class ClientDamageInfoManager {
     }
 
     public void add(DamageString newString) {
-        boolean combineEntity = ClientConfig.ENABLE_COMBINE_ENTITY.get();
+        boolean combineEntity = ClientConfig.ENABLE_COMBINE_STRING.get() && ClientConfig.ENABLE_COMBINE_ENTITY.get();
 
         // 实体级合并：同实体非 heal 伤害合并，颜色用默认色
         if (combineEntity && !"heal".equals(newString.getDamageType())) {
@@ -40,7 +44,7 @@ public class ClientDamageInfoManager {
             if (existing != null) {
                 float age = existing.getMaxLife() - existing.getLife();
                 if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
-                    existing.mergeDamage(newString.getAmount(), newString.getX(),  newString.getZ());
+                    existing.mergeDamage(newString.getAmount(), newString.getX(), newString.getZ());
                     return;
                 }
                 // 超龄：移出索引，下面会创建新条目
@@ -54,6 +58,8 @@ public class ClientDamageInfoManager {
                     DamageColorManager.DEFAULT_COLOR.getValue(),
                     COMBINED_KEY
             );
+            // 继承来源飘字的预合并放大（combined 本身是聚合体，不额外 +1%）
+            combined.setMergeScale(newString.getMergeScale());
             damageStringList.add(combined);
             entityMergeIndex.put(entityId, combined);
             trimExcess();

@@ -13,6 +13,7 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_STRING;
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_ENTITY;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
+    public static final ForgeConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
     public static final ForgeConfigSpec.ConfigValue<String> TEXTURE;
@@ -37,6 +38,10 @@ public class ClientConfig {
         MERGE_MAX_AGE = BUILDER
                 .comment("合并生成在多少tick以内的文字")
                 .define("mergeMaxAge", 40.0);
+        MERGE_SCALE_MAX = BUILDER
+                .comment("伤害数字合并时的尺寸放大上限（每次合并 +1%，达到此值后不再放大）",
+                        "1.0 表示不放大，默认 2.0 即最多放大到 2 倍")
+                .defineInRange("mergeScaleMax", 2.0, 1.0, 10.0);
         DAMAGE_STRING_LIFE = BUILDER
                 .comment("伤害数字存活时间（tick）")
                 .defineInRange("damageStringLife", 30, 5, 600);

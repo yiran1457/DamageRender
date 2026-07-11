@@ -122,6 +122,24 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("mergeScaleMax")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(1.0, 10.0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.MERGE_SCALE_MAX.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeScaleMax 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.MERGE_SCALE_MAX.get();
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeScaleMax 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("damageStringLife")
                                         .then(
                                                 Commands.argument("value", IntegerArgumentType.integer(5, 600))

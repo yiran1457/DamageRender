@@ -45,9 +45,9 @@ public class DamageInfoBatchPacket {
     }
 
     /**
-     * 预合并中间结果：累加 amount，保留首次出现的位置和颜色。
+     * 预合并中间结果：累加 amount，保留首次出现的位置和颜色，并记录合并段数（用于放大因子）。
      */
-    private record MergedEntry(double amount, Vec3 pos, int color) {}
+    private record MergedEntry(double amount, Vec3 pos, int color, int count) {}
 
     public static void handle(DamageInfoBatchPacket packet, Supplier<NetworkEvent.Context> ctxSupplier) {
         NetworkEvent.Context ctx = ctxSupplier.get();
@@ -69,12 +69,13 @@ public class DamageInfoBatchPacket {
                     var typeMap = mergeMap.computeIfAbsent(entityId, k -> new Object2ObjectOpenHashMap<>());
                     MergedEntry existing = typeMap.get(typeKey);
                     if (existing != null) {
-                        typeMap.put(typeKey, new MergedEntry(existing.amount() + amount, existing.pos(), existing.color()));
+                        // 合并段数 +1，对应 DamageString 构造时的放大因子
+                        typeMap.put(typeKey, new MergedEntry(existing.amount() + amount, existing.pos(), existing.color(), existing.count() + 1));
                     } else {
-                        typeMap.put(typeKey, new MergedEntry(amount, data.pos(), DamageColorManager.getInstance().getColor(typeKey).getValue()));
+                        typeMap.put(typeKey, new MergedEntry(amount, data.pos(), DamageColorManager.getInstance().getColor(typeKey).getValue(), 0));
                     }
                 }
-                // 把预合并结果加入 manager
+                // 把预合并结果加入 manager，count 作为初始合并次数驱动放大
                 for (var entityEntry : mergeMap.int2ObjectEntrySet()) {
                     int entityId = entityEntry.getIntKey();
                     for (var typeEntry : entityEntry.getValue().object2ObjectEntrySet()) {
@@ -85,7 +86,8 @@ public class DamageInfoBatchPacket {
                                 (float) pos.x(), (float) pos.y(), (float) pos.z(),
                                 (float) merged.amount(),
                                 merged.color(),
-                                typeEntry.getKey()
+                                typeEntry.getKey(),
+                                merged.count()
                         ));
                     }
                 }

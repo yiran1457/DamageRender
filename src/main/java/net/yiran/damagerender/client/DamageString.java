@@ -1,7 +1,6 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Matrix4f;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.util.Mth;
 import net.yiran.damagerender.ClientConfig;
@@ -35,11 +34,8 @@ public class DamageString {
     private static final float FADE_START_RATIO = 0.4f;
     private static final float SHRINK_DURATION = 3f;
 
-    /**
-     * 每飘字变换复用矩阵，避免 PoseStack.pushPose 复制 4×4+3×3 矩阵与 mulPose 旋转 normal 矩阵的开销。
-     * 渲染在客户端主线程单线程执行，复用安全。
-     */
-    private static final Matrix4f TMP_MATRIX = new Matrix4f();
+    /** 每飘字变换结果复用矩阵（列主序 float[16]），由 {@link Mat4Util#mulViewTranslateBaseScale} 写入。 */
+    private static final float[] TMP_MATRIX = new float[16];
 
     public DamageString(int entityId, float x, float y, float z, float damage, int color, String damageType) {
         this.entityId = entityId;
@@ -148,31 +144,24 @@ public class DamageString {
     }
 
     /**
-     * 渲染单个飘字。
+     * 渲染单个飘字：矩阵 {@code V·T(x,y,z)·baseRS·S(s)} 由 {@link Mat4Util#mulViewTranslateBaseScale} 一次性预算。
      *
-     * @param viewMatrix 外层 PoseStack 当前矩阵（已含 translate(-cameraPos)），循环内复用其引用
-     * @param baseRS     循环外预算的 R·S（相机旋转×缩放，含 Y 翻转），所有飘字共享
+     * @param viewMatrix 外层 PoseStack 当前矩阵（已含 translate(-cameraPos)），列主序 float[16]，循环内复用
+     * @param baseRS     循环外预算的 R·S（相机旋转×缩放，含 Y 翻转），列主序 float[16]，所有飘字共享
      * @param consumer   顶点消费者
      * @param partialTick 帧插值
      */
-    public void render(Matrix4f viewMatrix, Matrix4f baseRS, VertexConsumer consumer, float partialTick) {
+    public void render(float[] viewMatrix, float[] baseRS, VertexConsumer consumer, float partialTick) {
         update(partialTick);
 
-        // 已死亡或完全透明则跳过渲染（避免无谓的矩阵变换和顶点生成）
+        // 已死亡或完全透明则跳过渲染
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
-        // TMP = viewMatrix · T(x,y,z) · baseRS，post-multiply 顺序与原版 PoseStack 同构
-        TMP_MATRIX.load(viewMatrix);
-        TMP_MATRIX.multiply(com.mojang.math.Matrix4f.createTranslateMatrix(x, y, z));
-        TMP_MATRIX.multiply(baseRS);
+        // 缩小阶段额外缩放；多数飘字走 s=1 快路径
+        float s = (life < SHRINK_DURATION) ? life / SHRINK_DURATION : 1f;
 
-        // 缩小阶段（life<20）额外 post-multiply 动态缩放；多数飘字走快路径不进此分支。
-        if (life < SHRINK_DURATION) {
-            float s = life / SHRINK_DURATION;
-            TMP_MATRIX.multiply(com.mojang.math.Matrix4f.createScaleMatrix(s, s, s));
-        }
+        Mat4Util.mulViewTranslateBaseScale(TMP_MATRIX, viewMatrix, baseRS, x, y, z, s);
 
-        // 使用纹理图集渲染伤害数字，替代 Font.drawInBatch
         DamageNumberRenderer.renderNumber(
                 TMP_MATRIX,
                 consumer,

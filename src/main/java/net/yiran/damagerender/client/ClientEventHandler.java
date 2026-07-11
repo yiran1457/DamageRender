@@ -18,11 +18,10 @@ import net.yiran.damagerender.data.UpdateConfigPacket;
 /**
  * 飘字渲染入口。
  *
- * <p>每帧在循环外预算一次共享的"相机旋转×缩放"矩阵 {@code baseRS}（所有飘字共用同一相机朝向与固定 scale）。
- * 外层 PoseStack 仍保留 {@code translate(-cameraPos)}（世界→相机相对，view 的一部分），
- * 循环内每个飘字用复用 Matrix4f 在 view 之上 post-multiply 自身平移与 baseRS，
- * 与原 {@code pushPose; translate; mulPose; scale} 同构，但只复制 4×4（无 normal）、无栈分配、无四元数转换。
- * 顶点发射由 {@link DamageNumberRenderer#renderNumber} 用复用向量就地变换完成，无逐顶点分配。
+ * <p>每帧循环外预算一次共享的 {@code baseRS}（相机旋转×缩放），并把 view 与 baseRS 经
+ * {@link com.mojang.math.Matrix4f#store(java.nio.FloatBuffer)} 一次性转为列主序 {@code float[16]}。
+ * 循环内每个飘字由 {@link Mat4Util#mulViewTranslateBaseScale} 手写 fma 完成平移与缩放折叠，
+ * 再由 {@link DamageNumberRenderer#renderNumber} 逐顶点 fma 变换，全程无 mojang 矩阵乘法与对象分配。
  */
 public class ClientEventHandler {
     @SubscribeEvent
@@ -56,11 +55,17 @@ public class ClientEventHandler {
         float s = DamageString.RENDER_SCALE;
         baseRS.multiply(Matrix4f.createScaleMatrix(-s, s, -s));
 
+        // mojang Matrix4f → 列主序 float[16]，每帧循环外一次性转换
+        float[] viewArr = new float[16];
+        float[] baseRSArr = new float[16];
+        viewMatrix.store(java.nio.FloatBuffer.wrap(viewArr));
+        baseRS.store(java.nio.FloatBuffer.wrap(baseRSArr));
+
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
         VertexConsumer consumer = bufferSource.getBuffer(DamageNumberRenderer.getRenderType());
         ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
         for (DamageString damageString : manager.getDamageStringList()) {
-            damageString.render(viewMatrix, baseRS, consumer, partialTick);
+            damageString.render(viewArr, baseRSArr, consumer, partialTick);
         }
         bufferSource.endBatch(DamageNumberRenderer.getRenderType());
         manager.removeDead();

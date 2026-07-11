@@ -1,8 +1,6 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Matrix4f;
-import com.mojang.math.Vector4f;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.yiran.damagerender.ClientConfig;
@@ -30,11 +28,8 @@ public class DamageNumberRenderer {
     /** 字符 → 图集索引查找表，-1 表示无法渲染的字符。 */
     private static final byte[] CHAR_TO_INDEX = new byte[128];
 
-    /**
-     * 顶点变换复用向量，避免每个顶点 new Vector4f（VertexConsumer.vertex(Matrix4f,...) 默认实现会分配）。
-     * 渲染在客户端主线程单线程执行，复用安全。
-     */
-    private static final Vector4f TMP_VERTEX = new Vector4f();
+    /** 顶点变换复用缓冲 [x,y,z]，由 {@link Mat4Util#transformVertex} 写入，避免逐顶点分配。 */
+    private static final float[] TMP_VERTEX = new float[3];
 
     static {
         for (int i = 0; i < CHAR_TO_INDEX.length; i++) {
@@ -69,9 +64,9 @@ public class DamageNumberRenderer {
     }
 
     /**
-     * 使用纹理图集渲染一串伤害数字。
+     * 使用纹理图集渲染一串伤害数字，顶点经 {@code matrix} 手写 fma 变换。
      *
-     * @param matrix     当前变换矩阵（PoseStack.last().pose()）
+     * @param matrix     16 元素列主序变换矩阵（由 {@link Mat4Util#mulViewTranslateBaseScale} 产出）
      * @param consumer   顶点消费者（通过 bufferSource.getBuffer(RENDER_TYPE) 获取）
      * @param text       要渲染的文本（仅支持 0-9 和 '.'）
      * @param x          起始 X 偏移（像素，通常为居中偏移）
@@ -80,7 +75,7 @@ public class DamageNumberRenderer {
      * @param packedLight 光照贴图值（通常为 LightTexture.FULL_BRIGHT）
      * @return 渲染总宽度（像素），用于外部居中计算
      */
-    public static float renderNumber(Matrix4f matrix, VertexConsumer consumer,
+    public static float renderNumber(float[] matrix, VertexConsumer consumer,
                                      String text, float x, float y,
                                      int color, int packedLight) {
         float r = (color >> 16 & 0xFF) / 255f;
@@ -103,19 +98,14 @@ public class DamageNumberRenderer {
             float y0 = y;
             float y1 = y + CHAR_HEIGHT;
 
-            // 用复用的 Vector4f 就地变换，避免 vertex(Matrix4f,...) 默认实现每顶点 new Vector4f
-            TMP_VERTEX.set(x0, y0, 0, 1);
-            TMP_VERTEX.transform(matrix);
-            consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMin, 1f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x1, y0, 0, 1);
-            TMP_VERTEX.transform(matrix);
-            consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMax, 1f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x1, y1, 0, 1);
-            TMP_VERTEX.transform(matrix);
-            consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMax, 0f).uv2(packedLight).endVertex();
-            TMP_VERTEX.set(x0, y1, 0, 1);
-            TMP_VERTEX.transform(matrix);
-            consumer.vertex(TMP_VERTEX.x(), TMP_VERTEX.y(), TMP_VERTEX.z()).color(r, g, b, a).uv(uMin, 0f).uv2(packedLight).endVertex();
+            Mat4Util.transformVertex(matrix, x0, y0, TMP_VERTEX);
+            consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 1f).uv2(packedLight).endVertex();
+            Mat4Util.transformVertex(matrix, x1, y0, TMP_VERTEX);
+            consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 1f).uv2(packedLight).endVertex();
+            Mat4Util.transformVertex(matrix, x1, y1, TMP_VERTEX);
+            consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 0f).uv2(packedLight).endVertex();
+            Mat4Util.transformVertex(matrix, x0, y1, TMP_VERTEX);
+            consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 0f).uv2(packedLight).endVertex();
 
             cursorX += CHAR_WIDTH;
         }

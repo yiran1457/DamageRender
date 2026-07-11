@@ -33,7 +33,7 @@ public class DamageString {
     private static final float DRAG_FACTOR = 0.9f;
     private static final float HOVER_THRESHOLD = 0.001f;
     private static final float FADE_START_RATIO = 0.4f;
-    private static final float SHRINK_DURATION = 20f;
+    private static final float SHRINK_DURATION = 3f;
 
     /**
      * 每飘字变换复用矩阵，避免 PoseStack.pushPose 复制 4×4+3×3 矩阵与 mulPose 旋转 normal 矩阵的开销。
@@ -53,7 +53,7 @@ public class DamageString {
 
         this.life = ClientConfig.DAMAGE_STRING_LIFE.get();
         this.maxLife = this.life;
-        this.fadeStartLife = this.maxLife * FADE_START_RATIO;
+        this.fadeStartLife =SHRINK_DURATION;
         this.scale = RENDER_SCALE;
         this.colorRgb = color & 0x00FFFFFF;
         this.color = (0xFF << 24) | this.colorRgb;
@@ -63,8 +63,13 @@ public class DamageString {
         formatDamage();
     }
 
-    public void mergeDamage(float additional) {
+    public void mergeDamage(float additional, float newX, float newZ) {
         this.amount += Math.abs(additional);
+        this.x = newX;
+        this.z = newZ;
+        // 重置水平动量，使飘字从实体位置重新扩散；不修改 y 轴位置和动量
+        this.vX = (float) (Math.random() - 0.5) * 0.25f;
+        this.vZ = (float) (Math.random() - 0.5) * 0.25f;
         formatDamage();
         this.life = this.maxLife;
         this.color = (0xFF << 24) | this.colorRgb;

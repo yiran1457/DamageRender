@@ -40,7 +40,7 @@ public class ClientDamageInfoManager {
             if (existing != null) {
                 float age = existing.getMaxLife() - existing.getLife();
                 if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
-                    existing.mergeDamage(newString.getAmount());
+                    existing.mergeDamage(newString.getAmount(), newString.getX(),  newString.getZ());
                     return;
                 }
                 // 超龄：移出索引，下面会创建新条目
@@ -72,7 +72,7 @@ public class ClientDamageInfoManager {
                 if (existing != null) {
                     float age = existing.getMaxLife() - existing.getLife();
                     if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
-                        existing.mergeDamage(newString.getAmount());
+                        existing.mergeDamage(newString.getAmount(), newString.getX(), newString.getZ());
                         return;
                     }
                     typeMap.remove(damageType);

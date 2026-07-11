@@ -18,7 +18,7 @@ public class DamageString {
     private float halfWidth;
     private float life;
     private float maxLife;
-    private static final float INITIAL_UPWARD_SPEED = 0.3f;
+    private static final float INITIAL_UPWARD_SPEED = 0.20f;
     /**
      * 飘字基础缩放，所有实例固定为此值（构造时设定，运行时不变）。供外层预算 baseView 复用。
      */
@@ -42,9 +42,9 @@ public class DamageString {
     private static final float DRAG_FACTOR = 0.9f;
     private static final float HOVER_THRESHOLD = 0.001f;
     /** 水平扩散动量幅度，构造与合并复用。 */
-    private static final float HORIZONTAL_SPEED = 0.05f;
-    /** 合并时朝目标方向给速，距离小于此值视为已在目标处，回退纯随机扩散。 */
-    private static final float MERGE_AIM_THRESHOLD = 0.01f;
+    private static final float HORIZONTAL_SPEED = 0.2f;
+    /** 合并时新老坐标距离小于此值则不动量转移（飘字保持原动量），≥此值才朝新位置漂移。 */
+    private static final float MERGE_AIM_THRESHOLD = 1f;
     private static final float FADE_START_RATIO = 0.4f;
     private static final float SHRINK_DURATION = 3f;
 
@@ -113,30 +113,32 @@ public class DamageString {
     }
 
     /**
-     * 把水平动量 (vX,vZ) 设为朝 (targetX,targetZ) 方向，幅度 HORIZONTAL_SPEED × 随机系数，
-     * 并叠加一个小的垂直偏转使到达点散布在目标"旁边"而非正中心。y 轴位置和动量不动。
+     * 把水平动量 (vX,vZ) 设为朝 (targetX,targetZ) 方向，速度自适应距离使飘字最终停在目标附近
+     * （剩余距离 < {@link #MERGE_AIM_THRESHOLD}），下次同位置合并不再触发动量转移。
+     * 叠加小的垂直偏转使到达点散布在目标"旁边"而非正中心。y 轴位置和动量不动。
      *
-     * <p>已在目标处（距离 < {@link #MERGE_AIM_THRESHOLD}）时回退纯随机扩散，避免归一化除零。
+     * <p>新老坐标距离² < {@link #MERGE_AIM_THRESHOLD} 时不改动量——飘字保持当前水平动量
+     * 继续其原有飘动，避免小位移抖动让飘字乱跑；仅当实体明显移动才追过去。
      */
     private void aimHorizontalVelocity(float targetX, float targetZ) {
         float dx = targetX - this.x;
         float dz = targetZ - this.z;
-        float dist = (float) Math.sqrt(dx * dx + dz * dz);
-        if (dist < MERGE_AIM_THRESHOLD) {
-            // 已在目标处，随机扩散
-            this.vX = (float) (Math.random() - 0.5) * HORIZONTAL_SPEED;
-            this.vZ = (float) (Math.random() - 0.5) * HORIZONTAL_SPEED;
+        float distSq = dx * dx + dz * dz;
+        if (distSq < MERGE_AIM_THRESHOLD) {
             return;
         }
-        // 单位方向 + 垂直方向（dz/perp, -dx/perp），后者叠加随机偏转实现"旁边"散布
+        float dist = (float) Math.sqrt(distSq);
         float invDist = 1f / dist;
         float dirX = dx * invDist;
         float dirZ = dz * invDist;
         float perpX = -dirZ;
         float perpZ = dirX;
-        // 主速度幅度随机化（与原随机动量同量级），垂直偏转取其一半以内
-        float speed = (float) (0.5 + Math.random() * 0.5) * HORIZONTAL_SPEED; // [0.5,1.0]×幅度
-        float strafe = (float) (Math.random() - 0.5) * HORIZONTAL_SPEED;      // 垂直散布
+        // 自适应速度：v₀ = dist × (1 - drag)，使 drag 衰减下总位移 ≈ dist，飘字停在目标处
+        // 乘一个 [0.8,1.2] 随机系数，让多次合并的飘字散布在目标周围而非精确重合
+        float baseSpeed = dist * (1f - DRAG_FACTOR);
+        float speed = baseSpeed * (float) (0.8 + Math.random() * 0.4);
+        // 垂直散布取速度的 ±20%，实现"旁边"效果
+        float strafe = (float) (Math.random() - 0.5) * 0.4f * baseSpeed;
         this.vX = dirX * speed + perpX * strafe;
         this.vZ = dirZ * speed + perpZ * strafe;
     }

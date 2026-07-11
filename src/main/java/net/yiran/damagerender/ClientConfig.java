@@ -11,6 +11,7 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Integer> MAX_SHOW_RENDER;
     public static final ForgeConfigSpec.ConfigValue<Double> MIN_VALUE_DISPLAY;
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_STRING;
+    public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_ENTITY;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
@@ -28,8 +29,11 @@ public class ClientConfig {
                 .comment("启用渲染的最小数值")
                 .define("minValueDisplay", 0.5);
         ENABLE_COMBINE_STRING = BUILDER
-                .comment("是否启用渲染数字合并")
+                .comment("是否启用同类型伤害数字合并")
                 .define("enableCombineString", true);
+        ENABLE_COMBINE_ENTITY = BUILDER
+                .comment("是否将同一实体的所有伤害合并为一个数字（不合并治疗），颜色使用默认色")
+                .define("enableCombineEntity", false);
         MERGE_MAX_AGE = BUILDER
                 .comment("合并生成在多少tick以内的文字")
                 .define("mergeMaxAge", 40.0);

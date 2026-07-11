@@ -86,6 +86,24 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("enableCombineEntity")
+                                        .then(
+                                                Commands.argument("value", BoolArgumentType.bool())
+                                                        .executes(ctx -> {
+                                                            boolean value = BoolArgumentType.getBool(ctx, "value");
+                                                            ClientConfig.ENABLE_COMBINE_ENTITY.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 enableCombineEntity 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            boolean value = ClientConfig.ENABLE_COMBINE_ENTITY.get();
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 enableCombineEntity 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("mergeMaxAge")
                                         .then(
                                                 Commands.argument("value", DoubleArgumentType.doubleArg(0))

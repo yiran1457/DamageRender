@@ -57,8 +57,9 @@ public class DamageString {
     private float mergeBounceScale;
     /**
      * 弹跳衰减率：每 tick 衰减为 BOUNCE_DECAY 倍（向 1.0 收敛），值越大回归越慢。
+     * 循环外预算 BOUNCE_DECAY^partialTick 后传入，避免逐飘字 Math.pow。
      */
-    private static final float BOUNCE_DECAY = 0.85f;
+    static final float BOUNCE_DECAY = 0.85f;
     /**
      * 弹跳峰值系数：合并时 mergeBounceScale 设为 1 + (mergeScale-1) × 此值。
      * 即弹跳幅度与当前 mergeScale 成正比——合并累积越大，弹跳越明显。
@@ -71,7 +72,10 @@ public class DamageString {
     private final int entityId;
     private String damageType;
     private float fadeStartLife;
-    private static final float DRAG_FACTOR = 0.9f;
+    /**
+     * 拖拽衰减率：每 tick 速度衰减为此倍。循环外预算 DRAG_FACTOR^partialTick 后传入，避免逐飘字 Math.pow。
+     */
+    static final float DRAG_FACTOR = 0.9f;
     private static final float HOVER_THRESHOLD = 0.001f;
     /**
      * 水平扩散动量幅度，构造与合并复用。
@@ -251,13 +255,11 @@ public class DamageString {
         this.baseScale = (float) Math.log(amount) * invLogBase;
     }
 
-    private void update(float partialTick) {
+    private void update(float partialTick, float drag, float bounceDecay) {
         this.life -= partialTick;
 
         if (this.life > 0) {
-            // 帧率无关衰减：每 tick 衰减为 DRAG_FACTOR 倍，故一帧（partialTick tick）衰减为 DRAG_FACTOR^partialTick。
-            // 原写法 v*=DRAG_FACTOR 每帧固定比例，高帧率衰减过快导致飘字停得太早。
-            float drag = (float) Math.pow(DRAG_FACTOR, partialTick);
+            // 帧率无关衰减：drag = DRAG_FACTOR^partialTick 由外层循环外预算一次，所有飘字复用。
             this.vY *= drag;
             this.vX *= drag;
             this.vZ *= drag;
@@ -274,7 +276,7 @@ public class DamageString {
             if (this.mergeBounceScale > 1f) {
                 // bounceDelta 每帧衰减，bounceScale = 1 + delta
                 float delta = this.mergeBounceScale - 1f;
-                delta *= (float) Math.pow(BOUNCE_DECAY, partialTick);
+                delta *= bounceDecay;
                 if (delta < 0.001f) delta = 0f;
                 this.mergeBounceScale = 1f + delta;
             }
@@ -294,9 +296,12 @@ public class DamageString {
      * @param baseRS      循环外预算的 R·S（相机旋转×缩放，含 Y 翻转），列主序 float[16]，所有飘字共享
      * @param consumer    顶点消费者
      * @param partialTick 帧插值
+     * @param drag        外层预算的 DRAG_FACTOR^partialTick，循环内复用避免逐飘字 Math.pow
+     * @param bounceDecay 外层预算的 BOUNCE_DECAY^partialTick，循环内复用避免逐飘字 Math.pow
      */
-    public void render(float[] viewMatrix, float[] baseRS, VertexConsumer consumer, float partialTick) {
-        update(partialTick);
+    public void render(float[] viewMatrix, float[] baseRS, VertexConsumer consumer, float partialTick,
+                       float drag, float bounceDecay) {
+        update(partialTick, drag, bounceDecay);
 
         // 已死亡或完全透明则跳过渲染
         if (life <= 0 || (this.color >>> 24) == 0) return;

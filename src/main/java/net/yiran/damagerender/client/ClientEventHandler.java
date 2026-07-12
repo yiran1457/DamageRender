@@ -3,7 +3,6 @@ package net.yiran.damagerender.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Matrix4f;
-import com.mojang.math.Quaternion;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -15,15 +14,30 @@ import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.UpdateConfigPacket;
 
+import java.nio.FloatBuffer;
+
 /**
  * 飘字渲染入口。
  *
  * <p>每帧循环外预算一次共享的 {@code baseRS}（相机旋转×缩放），并把 view 与 baseRS 经
- * {@link com.mojang.math.Matrix4f#store(java.nio.FloatBuffer)} 一次性转为列主序 {@code float[16]}。
+ * {@link Matrix4f#store(FloatBuffer)} 一次性转为列主序 {@code float[16]}。
  * 循环内每个飘字由 {@link Mat4Util#mulViewTranslateBaseScale} 手写 fma 完成平移与缩放折叠，
  * 再由 {@link DamageNumberRenderer#renderNumber} 逐顶点 fma 变换，全程无 mojang 矩阵乘法与对象分配。
  */
 public class ClientEventHandler {
+    /**
+     * 每帧复用的列主序 float[16] 矩阵缓冲，避免逐帧 new float[16] 分配。
+     * 渲染在客户端主线程单线程执行，复用安全。
+     */
+    private static final float[] VIEW_ARR = new float[16];
+    private static final float[] BASE_RS_ARR = new float[16];
+    /** view 矩阵转 float[] 复用的 FloatBuffer 包装，避免逐帧 wrap 分配。 */
+    private static final FloatBuffer VIEW_BUF = FloatBuffer.wrap(VIEW_ARR);
+    private static final FloatBuffer BASE_RS_BUF = FloatBuffer.wrap(BASE_RS_ARR);
+    /** baseRS 构造复用：Y 翻转×固定缩放矩阵，scale 固定无需每帧 new/createScaleMatrix。 */
+    private static final Matrix4f FLIP_SCALE = Matrix4f.createScaleMatrix(
+            -DamageString.RENDER_SCALE, DamageString.RENDER_SCALE, -DamageString.RENDER_SCALE);
+
     @SubscribeEvent
     public static void onLogging(ClientPlayerNetworkEvent.LoggingIn event) {
         DamageRender.NETWORK.sendToServer(new UpdateConfigPacket(ClientConfig.SHOW_DISTANCE.get()));
@@ -42,30 +56,34 @@ public class ClientEventHandler {
         // 外层世界→相机相对平移（view 的一部分，原版同款）。顶点矩阵需继承此变换。
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        // viewMatrix = T(-cam)，循环内每个飘字在其基础上 post-multiply 自身变换
-        Matrix4f viewMatrix = new Matrix4f(poseStack.last().pose());
+        // viewMatrix = T(-cam)，循环内每个飘字在其基础上 post-multiply 自身变换。
+        // 直接取 PoseStack 内部矩阵引用，store 后只读不写，无需拷贝。
+        Matrix4f viewMatrix = poseStack.last().pose();
 
         // baseRS = R(相机朝向) * S(Y翻转) * S(固定缩放)，对所有飘字共享，每帧算一次。
-        Quaternion cam = mc.getEntityRenderDispatcher().cameraOrientation();
+        com.mojang.math.Quaternion cam = mc.getEntityRenderDispatcher().cameraOrientation();
         Matrix4f baseRS = new Matrix4f();
         baseRS.setIdentity();
-        // 旋转矩阵 R = 相机朝向
+        // 旋转矩阵 R = 相机朝向（1.19.2 Matrix4f 无 set(Quaternion)，只能经构造函数构造）
         baseRS.multiply(new Matrix4f(cam));
-        // 缩放：Y翻转 * 固定缩放
-        float s = DamageString.RENDER_SCALE;
-        baseRS.multiply(Matrix4f.createScaleMatrix(-s, s, -s));
+        // 缩放：Y翻转 * 固定缩放（FLIP_SCALE 固定不变，直接复用，免每帧 createScaleMatrix）
+        baseRS.multiply(FLIP_SCALE);
 
-        // mojang Matrix4f → 列主序 float[16]，每帧循环外一次性转换
-        float[] viewArr = new float[16];
-        float[] baseRSArr = new float[16];
-        viewMatrix.store(java.nio.FloatBuffer.wrap(viewArr));
-        baseRS.store(java.nio.FloatBuffer.wrap(baseRSArr));
+        // mojang Matrix4f → 列主序 float[16]，每帧循环外一次性转换（复用缓冲与 FloatBuffer 包装）
+        VIEW_BUF.clear();
+        viewMatrix.store(VIEW_BUF);
+        BASE_RS_BUF.clear();
+        baseRS.store(BASE_RS_BUF);
+
+        // 帧内常量：drag 与 bounceDecay 仅依赖 partialTick，循环外算一次供所有飘字复用
+        float drag = (float) Math.pow(DamageString.DRAG_FACTOR, partialTick);
+        float bounceDecay = (float) Math.pow(DamageString.BOUNCE_DECAY, partialTick);
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
         VertexConsumer consumer = bufferSource.getBuffer(DamageNumberRenderer.getRenderType());
         ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
         for (DamageString damageString : manager.getDamageStringList()) {
-            damageString.render(viewArr, baseRSArr, consumer, partialTick);
+            damageString.render(VIEW_ARR, BASE_RS_ARR, consumer, partialTick, drag, bounceDecay);
         }
         bufferSource.endBatch(DamageNumberRenderer.getRenderType());
         manager.removeDead();

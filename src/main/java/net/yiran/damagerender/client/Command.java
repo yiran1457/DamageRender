@@ -140,6 +140,43 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("mergeResetLife")
+                                        .then(
+                                                Commands.argument("value", BoolArgumentType.bool())
+                                                        .executes(ctx -> {
+                                                            boolean value = BoolArgumentType.getBool(ctx, "value");
+                                                            ClientConfig.MERGE_RESET_LIFE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeResetLife 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            boolean value = ClientConfig.MERGE_RESET_LIFE.get();
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 mergeResetLife 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("baseScaleLogBase")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(1.01, 100.0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.BASE_SCALE_LOG_BASE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            DamageString.refreshLogBase();
+                                                            ctx.getSource().sendSuccess(Component.literal("配置项 baseScaleLogBase 设置为 : " + value), false);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.BASE_SCALE_LOG_BASE.get();
+                                            ctx.getSource().sendSuccess(Component.literal("配置项 baseScaleLogBase 值为 : " + value), false);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("damageStringLife")
                                         .then(
                                                 Commands.argument("value", IntegerArgumentType.integer(5, 600))

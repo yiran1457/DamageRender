@@ -29,6 +29,24 @@ public class DamageString {
     private static final float MERGE_SCALE_STEP = 1.03f;
     private float scale;
     /**
+     * 基于伤害数值的对数基础缩放：log(amount)/log(base)。
+     * 大伤害数字基础尺寸更大，但受对数压缩增长平缓。由 {@link #formatDamage()} 计算。
+     */
+    private float baseScale;
+    /**
+     * 1 / ln(BASE_SCALE_LOG_BASE) 的缓存值，配置变更时重算。
+     * 换底公式：log_b(x) = ln(x) / ln(b) = ln(x) * INV_LOG_BASE，
+     * 避免每次 formatDamage 重复计算 1/ln(b)。
+     */
+    private static float invLogBase = (float) (1.0 / Math.log(ClientConfig.BASE_SCALE_LOG_BASE.get()));
+
+    /**
+     * 配置变更时调用，重算缓存的对数底数倒数。
+     */
+    public static void refreshLogBase() {
+        invLogBase = (float) (1.0 / Math.log(ClientConfig.BASE_SCALE_LOG_BASE.get()));
+    }
+    /**
      * 合并累积的额外缩放因子，初始 1.0，每次合并 ×1.01，受 MERGE_SCALE_MAX 上限约束。
      */
     private float mergeScale;
@@ -129,7 +147,10 @@ public class DamageString {
         // 弹跳缩放：基于合并后的 mergeScale 额外放大，后续逐帧衰减回 1.0
         this.mergeBounceScale = 1f + (this.mergeScale - 1f) * BOUNCE_PEAK_FACTOR;
         formatDamage();
-        this.life = this.maxLife;
+        // 合并是否重置存活时间由配置决定：开启则刷新为满生命，关闭则保持剩余生命
+        if (ClientConfig.MERGE_RESET_LIFE.get()) {
+            this.life = this.maxLife;
+        }
         this.color = (0xFF << 24) | this.colorRgb;
     }
 
@@ -226,6 +247,8 @@ public class DamageString {
         }
         // 使用纹理图集宽度计算居中偏移，替代 font.width
         this.halfWidth = -DamageNumberRenderer.getTextWidth(this.displayText) / 2f;
+        // 对数基础缩放：大伤害数字基础尺寸更大，log 压缩使增长平缓
+        this.baseScale = (float) Math.log(amount) * invLogBase;
     }
 
     private void update(float partialTick) {
@@ -278,9 +301,9 @@ public class DamageString {
         // 已死亡或完全透明则跳过渲染
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
-        // 缩小阶段额外缩放，叠加合并累积 + 弹跳缩放因子
+        // 缩小阶段额外缩放，叠加对数基础尺寸 + 合并累积 + 弹跳缩放因子
         float shrink = (life < SHRINK_DURATION) ? (life * 0.5f+ 3) / (SHRINK_DURATION + 3) : 1f;
-        float s = shrink * (mergeScale + mergeBounceScale - 1);
+        float s = shrink * (baseScale + mergeScale + mergeBounceScale - 1);
 
         Mat4Util.mulViewTranslateBaseScale(TMP_MATRIX, viewMatrix, baseRS, x, y, z, s);
 

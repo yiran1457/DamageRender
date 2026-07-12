@@ -31,7 +31,7 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
 
         PoseStack poseStack = event.getPoseStack();
         Minecraft mc = Minecraft.getInstance();

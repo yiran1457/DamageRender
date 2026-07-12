@@ -14,6 +14,8 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_ENTITY;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
+    public static final ForgeConfigSpec.ConfigValue<Boolean> MERGE_RESET_LIFE;
+    public static final ForgeConfigSpec.ConfigValue<Double> BASE_SCALE_LOG_BASE;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
     public static final ForgeConfigSpec.ConfigValue<String> TEXTURE;
@@ -42,6 +44,14 @@ public class ClientConfig {
                 .comment("伤害数字合并时的尺寸放大上限（每次合并 +1%，达到此值后不再放大）",
                         "1.0 表示不放大，默认 2.0 即最多放大到 2 倍")
                 .defineInRange("mergeScaleMax", 2.0, 1.0, 10.0);
+        MERGE_RESET_LIFE = BUILDER
+                .comment("合并伤害时是否重置飘字存活时间（true=每次合并刷新为满生命，false=保持原剩余生命）")
+                .define("mergeResetLife", true);
+        BASE_SCALE_LOG_BASE = BUILDER
+                .comment("伤害数字基础缩放的对数底数（baseScale = log(amount) / log(底数)）",
+                        "底数越大，大伤害数字的基础尺寸增长越慢；底数越小增长越快",
+                        "默认 10.0（常用对数），设为 2.0 则为二进制对数")
+                .defineInRange("baseScaleLogBase", 10.0, 1.01, 32768);
         DAMAGE_STRING_LIFE = BUILDER
                 .comment("伤害数字存活时间（tick）")
                 .defineInRange("damageStringLife", 30, 5, 600);

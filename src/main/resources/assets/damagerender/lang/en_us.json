@@ -1,0 +1,18 @@
+{
+  "damagerender.configuration.title": "DamageRender",
+  "damagerender.configuration.showDistance": "Render Distance",
+  "damagerender.configuration.showDistance.tooltip": "Maximum radius. Damage numbers farther than this are not rendered.",
+  "damagerender.configuration.maxShowRender": "Max Rendered Count",
+  "damagerender.configuration.maxShowRender.tooltip": "Maximum number of damage numbers rendered at once.",
+  "damagerender.configuration.minValueDisplay": "Min Value Display",
+  "damagerender.configuration.minValueDisplay.tooltip": "Damage below this value is not rendered.",
+  "damagerender.configuration.enableCombineString": "Enable Combine",
+  "damagerender.configuration.enableCombineString.tooltip": "Whether to merge nearby damage numbers of the same type.",
+  "damagerender.configuration.mergeDistanceSQ": "Merge Distance (squared)",
+  "damagerender.configuration.mergeDistanceSQ.tooltip": "Squared radius within which damage numbers are merged.",
+  "damagerender.configuration.mergeMaxAge": "Merge Max Age",
+  "damagerender.configuration.mergeMaxAge.tooltip": "Damage numbers younger than this many ticks (since spawn) can be merged.",
+  "damagerender.configuration.damageStringLife": "Lifespan (ticks)",
+  "damagerender.configuration.damageStringLife.tooltip": "How long each damage number stays visible, in ticks (20 ticks = 1 second).",
+  "damagerender.command.damagerender": "DamageRender"
+}

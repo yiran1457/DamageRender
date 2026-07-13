@@ -1,0 +1,18 @@
+{
+  "damagerender.configuration.title": "伤害渲染",
+  "damagerender.configuration.showDistance": "渲染距离",
+  "damagerender.configuration.showDistance.tooltip": "最远的渲染半径，超出此半径的伤害数字不渲染。",
+  "damagerender.configuration.maxShowRender": "最大渲染数量",
+  "damagerender.configuration.maxShowRender.tooltip": "同时最多渲染的伤害数字数量。",
+  "damagerender.configuration.minValueDisplay": "最小显示数值",
+  "damagerender.configuration.minValueDisplay.tooltip": "低于此数值的伤害不渲染。",
+  "damagerender.configuration.enableCombineString": "启用数字合并",
+  "damagerender.configuration.enableCombineString.tooltip": "是否合并附近的同类型伤害数字。",
+  "damagerender.configuration.mergeDistanceSQ": "合并半径（平方）",
+  "damagerender.configuration.mergeDistanceSQ.tooltip": "在此半径（平方）内的伤害数字会被合并。",
+  "damagerender.configuration.mergeMaxAge": "合并最大年龄",
+  "damagerender.configuration.mergeMaxAge.tooltip": "生成后在此 tick 数以内的文字可被合并。",
+  "damagerender.configuration.damageStringLife": "存活时间（tick）",
+  "damagerender.configuration.damageStringLife.tooltip": "每个伤害数字的可见时长，单位 tick（20 tick = 1 秒）。",
+  "damagerender.command.damagerender": "伤害渲染"
+}

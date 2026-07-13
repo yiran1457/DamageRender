@@ -1,0 +1,115 @@
+plugins {
+    id 'net.neoforged.moddev'
+    id 'neoforge-mutex'
+    id 'maven-publish'
+}
+
+def modId = project.findProperty('mod_id') as String
+def modName = project.findProperty('mod_name') as String
+def modVersion = project.findProperty('mod_version') as String
+def modGroup = project.findProperty('mod_group_id') as String
+def modLicense = project.findProperty('mod_license') as String
+
+def minecraftVersion = project.findProperty('minecraft_version') as String
+def neoVersion = project.findProperty('neo_version') as String
+def loaderRange = project.findProperty('loader_version_range') as String
+def mcRange = project.findProperty('minecraft_version_range') as String
+def parchmentMc = project.findProperty('parchment_minecraft_version') as String
+def parchmentMappings = project.findProperty('parchment_mappings_version') as String
+
+version = "${modVersion}+${minecraftVersion}-neoforge"
+group = modGroup
+base.archivesName = "${modName}-${minecraftVersion}-NeoForge"
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+repositories {
+    maven { url = 'https://cursemaven.com'; name = 'CurseMaven' }
+}
+
+neoForge {
+    version = neoVersion
+
+    parchment { p ->
+        // Groovy 对 Gradle Property 的 "=" 赋值不可靠（脚本局部变量 minecraftVersion 会与
+        // Parchment 的 Property<String> 同名冲突，且找不到 setX setter）。用显式参数 p + .set()。
+        p.mappingsVersion.set(parchmentMappings)
+        p.minecraftVersion.set(parchmentMc)
+    }
+
+    runs {
+        register('client') {
+            client()
+            gameDirectory = file('run')
+        }
+        register('server') {
+            server()
+            gameDirectory = file('run')
+            programArgument '--nogui'
+        }
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+        }
+    }
+
+    mods {
+        register(modId) {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+sourceSets.named('main') {
+    java {
+        exclude '**/DamageColorManager.java'
+        exclude '**/DamageNumberRenderer.java'
+        exclude '**/Mat4Util.java'
+    }
+    resources {
+        exclude 'META-INF/mods.toml'
+        exclude 'META-INF/accesstransformer.cfg'
+        exclude 'pack.mcmeta'
+        exclude 'assets/damagerender/textures/**'
+    }
+}
+
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+            minecraft_version       : minecraftVersion,
+            minecraft_version_range : mcRange,
+            neo_version             : neoVersion,
+            loader_version_range    : loaderRange,
+            mod_id                  : modId,
+            mod_name                : modName,
+            mod_license             : modLicense,
+            mod_version             : modVersion,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    // Stonecutter 子项目的 projectDir 是 versions/<version>/，根 src/main/templates 在根项目下，
+    // 必须用 rootProject 定位，否则 from 'src/main/templates' 相对子项目目录会找不到（NO-SOURCE）。
+    from rootProject.layout.projectDirectory.dir('src/main/templates')
+    into layout.buildDirectory.dir('generated/sources/modMetadata')
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.named('createMinecraftArtifacts') {
+    dependsOn 'stonecutterGenerate'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('buildAndCollect', Copy) {
+    group = 'build'
+    description = 'Builds mod jars and copies results to root build/libs/{mod version}/'
+    dependsOn 'build'
+    from(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    into rootProject.layout.buildDirectory.dir("libs/${modVersion}")
+}

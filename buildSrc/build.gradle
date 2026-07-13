@@ -1,0 +1,12 @@
+plugins {
+    id 'groovy'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // gradleApi() 让 buildSrc 能访问 Gradle 的 Plugin/Project/BuildService 等 API。
+    implementation gradleApi()
+}

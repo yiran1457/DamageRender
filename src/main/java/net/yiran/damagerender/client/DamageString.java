@@ -140,14 +140,9 @@ public class DamageString {
         // 弹跳缩放：基于合并后的 mergeScale 额外放大，后续逐帧衰减回 1.0
         this.mergeBounceScale = 1f + (this.mergeScale - 1f) * BOUNCE_PEAK_FACTOR;
         formatDamage();
-        // 合并是否重置存活时间由配置决定：1.19.2 受 MERGE_RESET_LIFE 控制；1.20.1 直接重置
-//? if =1.19.2 {
-        /*if (ClientConfig.MERGE_RESET_LIFE.get()) {
+        if (ClientConfig.MERGE_RESET_LIFE.get()) {
             this.life = this.maxLife;
         }
-*///?} else {
-        this.life = this.maxLife;
-//?}
         this.color = (0xFF << 24) | this.colorRgb;
     }
 
@@ -311,4 +306,3 @@ public class DamageString {
         );
     }
 }
-

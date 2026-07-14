@@ -1,10 +1,8 @@
 //? if forge {
-//? if =1.19.2 {
-/*package net.yiran.damagerender.client;
+package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Matrix4f;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -15,13 +13,18 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.data.UpdateConfigPacket;
-
+//? if =1.19.2 {
+/*import com.mojang.math.Matrix4f;
 import java.nio.FloatBuffer;
+*///?} else {
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+//?}
 
  // 飘字渲染入口。
  //
  // <p>每帧循环外预算一次共享的 {@code baseRS}（相机旋转×缩放），并把 view 与 baseRS 经
- // {@link Matrix4f#store(FloatBuffer)} 一次性转为列主序 {@code float[16]}。
+ // {@link Matrix4f#get(float[])} 一次性转为列主序 {@code float[16]}。
  // 循环内每个飘字由 {@link Mat4Util#mulViewTranslateBaseScale} 手写 fma 完成平移与缩放折叠，
  // 再由 {@link DamageNumberRenderer#renderNumber} 逐顶点 fma 变换，全程无 mojang 矩阵乘法与对象分配。
  //
@@ -31,12 +34,14 @@ public class ClientEventHandler {
      //
     private static final float[] VIEW_ARR = new float[16];
     private static final float[] BASE_RS_ARR = new float[16];
-     // view 矩阵转 float[] 复用的 FloatBuffer 包装，避免逐帧 wrap 分配。 
+//? if =1.19.2 {
+    /* // view 矩阵转 float[] 复用的 FloatBuffer 包装，避免逐帧 wrap 分配。
     private static final FloatBuffer VIEW_BUF = FloatBuffer.wrap(VIEW_ARR);
     private static final FloatBuffer BASE_RS_BUF = FloatBuffer.wrap(BASE_RS_ARR);
-     // baseRS 构造复用：Y 翻转×固定缩放矩阵，scale 固定无需每帧 new/createScaleMatrix。 
+     // baseRS 构造复用：Y 翻转×固定缩放矩阵，scale 固定无需每帧 new/createScaleMatrix。
     private static final Matrix4f FLIP_SCALE = Matrix4f.createScaleMatrix(
             -DamageString.RENDER_SCALE, DamageString.RENDER_SCALE, -DamageString.RENDER_SCALE);
+*///?}
 
     @SubscribeEvent
     public static void onLogging(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -45,7 +50,8 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+//? if =1.19.2 {
+        /*if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
 
         PoseStack poseStack = event.getPoseStack();
         Minecraft mc = Minecraft.getInstance();
@@ -74,62 +80,7 @@ public class ClientEventHandler {
         viewMatrix.store(VIEW_BUF);
         BASE_RS_BUF.clear();
         baseRS.store(BASE_RS_BUF);
-
-        // 帧内常量：drag 与 bounceDecay 仅依赖 partialTick，循环外算一次供所有飘字复用
-        float drag = (float) Math.pow(DamageString.DRAG_FACTOR, partialTick);
-        float bounceDecay = (float) Math.pow(DamageString.BOUNCE_DECAY, partialTick);
-
-        MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        VertexConsumer consumer = bufferSource.getBuffer(DamageNumberRenderer.getRenderType());
-        ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
-        for (DamageString damageString : manager.getDamageStringList()) {
-            damageString.render(VIEW_ARR, BASE_RS_ARR, consumer, partialTick, drag, bounceDecay);
-        }
-        bufferSource.endBatch(DamageNumberRenderer.getRenderType());
-        manager.removeDead();
-
-        poseStack.popPose();
-    }
-}
 *///?} else {
-package net.yiran.damagerender.client;
-
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.yiran.damagerender.ClientConfig;
-import net.yiran.damagerender.DamageRender;
-import net.yiran.damagerender.data.UpdateConfigPacket;
-import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-
- // 飘字渲染入口。
- // 
- // <p>每帧循环外预算一次共享的 {@code baseRS}（相机旋转×缩放），并把 view 与 baseRS 经
- // {@link Matrix4f#get(float[])} 一次性转为列主序 {@code float[16]}。
- // 循环内每个飘字由 {@link Mat4Util#mulViewTranslateBaseScale} 手写 fma 完成平移与缩放折叠，
- // 再由 {@link DamageNumberRenderer#renderNumber} 逐顶点 fma 变换，全程无 mojang 矩阵乘法与对象分配。
- //
-public class ClientEventHandler {
-         // 每帧复用的列主序 float[16] 矩阵缓冲，避免逐帧 new float[16] 分配。
-     // 渲染在客户端主线程单线程执行，复用安全。
-     //
-    private static final float[] VIEW_ARR = new float[16];
-    private static final float[] BASE_RS_ARR = new float[16];
-
-    @SubscribeEvent
-    public static void onLogging(ClientPlayerNetworkEvent.LoggingIn event) {
-        DamageRender.NETWORK.sendToServer(new UpdateConfigPacket(ClientConfig.SHOW_DISTANCE.get()));
-    }
-
-    @SubscribeEvent
-    public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
 
         PoseStack poseStack = event.getPoseStack();
@@ -154,6 +105,7 @@ public class ClientEventHandler {
         // org.joml Matrix4f → 列主序 float[16]，每帧循环外一次性转换
         viewMatrix.get(VIEW_ARR);
         baseRS.get(BASE_RS_ARR);
+//?}
 
         // 帧内常量：drag 与 bounceDecay 仅依赖 partialTick，循环外算一次供所有飘字复用
         float drag = (float) Math.pow(DamageString.DRAG_FACTOR, partialTick);
@@ -171,7 +123,6 @@ public class ClientEventHandler {
         poseStack.popPose();
     }
 }
-//?}
 //?} else {
 /*package net.yiran.damagerender.client;
 

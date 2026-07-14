@@ -6,9 +6,7 @@ plugins {
 
 stonecutter.active '1.20.1-forge'
 
-// Stonecutter 0.7.11 的 Groovy 闭包支持不完善：parameters(Closure) 内部用 config::call 调用，
-// 只把 StonecutterBuildProperties 当参数传入，并不会设为闭包 delegate。
-// 因此这里显式声明参数 p（即 StonecutterBuildProperties），用 p.current / p.node 访问。
+// 显式声明 StonecutterBuildExtension 参数，避免 Groovy 闭包中的属性解析歧义。
 stonecutter.parameters { p ->
     // p.current.project 形如 "1.20.1-forge"，按 "-" 拆成 [版本, loader]。
     def parts = p.current.project.toString().split('-', 2)
@@ -20,6 +18,6 @@ stonecutter.parameters { p ->
 
     // swap 把源码中的占位符替换成实际值。
     // p.node.project 是该版本对应的 Gradle Project；p.node.metadata.version 是其 MC 版本号。
-    p.swaps.mod_version = "\"${p.node.project.property('mod_version')}\";"
-    p.swaps.minecraft = "\"${p.node.metadata.version}\";"
+    p.swaps.mod_version = "\"${p.node.project.property('mod_version')}\";".toString()
+    p.swaps.minecraft = "\"${p.node.metadata.version}\";".toString()
 }

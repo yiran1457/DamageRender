@@ -1,6 +1,6 @@
 # DamageRender (Stonecutter)
 
-Multi-version DamageRender workspace managed by [Stonecutter](https://stonecutter.kikugie.dev/) 0.7.11.
+Multi-version DamageRender workspace managed by [Stonecutter](https://stonecutter.kikugie.dev/) 0.9.6.
 
 ## Supported versions
 
@@ -42,7 +42,7 @@ Forge-only helpers (`DamageColorManager`, `DamageNumberRenderer`, `Mat4Util`) ar
 
 ## Notes
 
-- Gradle **8.8** (ForgeGradle does not support Gradle 9 yet).
-- Stonecutter **0.7.11** (0.8+ requires Gradle 9).
+- Gradle **9.4.1**.
+- Stonecutter **0.9.6**.
 - Proxy settings live in root `gradle.properties`.
 - Version pins live in `versions/<node>/gradle.properties`.

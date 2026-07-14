@@ -12,26 +12,23 @@ pluginManagement {
 }
 
 plugins {
-    id 'dev.kikugie.stonecutter' version '0.7.11'
+    id 'dev.kikugie.stonecutter' version '0.9.6'
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
-stonecutter {
-    create(rootProject) {
-        // Groovy 不支持 Kotlin 的局部函数，这里用闭包代替。
-        // 注意：参数名不能用 project/version，否则会遮蔽 Stonecutter DSL 里的同名方法。
-        // 对每个 loader 生成一个版本节点，并指向对应的 build.<loader>.gradle 脚本。
-        def match = { String mcVer, List<String> loaders, String ver = mcVer ->
-            for (loader in loaders) {
-                version("${mcVer}-${loader}", ver).buildscript("build.${loader}.gradle")
-            }
-        }
-
-        match('1.19.2', ['forge'])
-        match('1.20.1', ['forge'])
-        match('1.21.1', ['neoforge'])
-        vcsVersion = '1.20.1-forge'
+stonecutter.create(getRootProject()) {
+    mapBuilds { branch, node ->
+        def separator = node.project.lastIndexOf('-')
+        def loader = separator >= 0 ? node.project.substring(separator + 1) : 'forge'
+        "build.${loader}.gradle".toString()
     }
+
+    versions([
+        '1.19.2-forge'   : '1.19.2',
+        '1.20.1-forge'   : '1.20.1',
+        '1.21.1-neoforge': '1.21.1'
+    ])
+    vcsVersion = '1.20.1-forge'
 }
 
 rootProject.name = 'DamageRender'

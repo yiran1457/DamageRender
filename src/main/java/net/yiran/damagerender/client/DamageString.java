@@ -24,11 +24,7 @@ public class DamageString {
     public static final float RENDER_SCALE = 0.04f;
          // 合并放大步长：每次 mergeDamage 缩放因子乘以此值。
      //
-//? if =1.19.2 {
-    /*private static final float MERGE_SCALE_STEP = 1.03f;
-*///?} else {
     private static final float MERGE_SCALE_STEP = 1.01f;
-//?}
          // 1 / ln(BASE_SCALE_LOG_BASE) 的缓存值，配置变更时重算。
      // 换底公式：log_b(x) = ln(x) / ln(b) = ln(x) * INV_LOG_BASE，
      // 避免每次 formatDamage 重复计算 1/ln(b)。

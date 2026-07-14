@@ -101,6 +101,7 @@ public record DamageInfoPacket(DamageInfoData data) implements CustomPacketPaylo
         ctx.enqueueWork(() -> {
             double amount = packet.data.amount();
             if (Math.abs(amount) < ClientConfig.MIN_VALUE_DISPLAY.get()) return;
+            if (!ClientConfig.SHOW_HEAL_NUMBERS.get() && "heal".equals(packet.data.fallbackKey())) return;
 
             var vec3 = packet.data.pos();
             int color = ClientDamageInfoManager.getInstance().getColor(packet.data).getValue();

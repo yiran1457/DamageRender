@@ -128,15 +128,19 @@ public class DamageInfoBatchPacket {
 //?} else {
 /*package net.yiran.damagerender.data;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.yiran.damagerender.ClientConfig;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.client.ClientDamageInfoManager;
+import net.yiran.damagerender.client.DamageColorManager;
 import net.yiran.damagerender.client.DamageString;
 
 import java.util.List;
@@ -169,26 +173,72 @@ public record DamageInfoBatchPacket(List<DamageInfoData> entries) implements Cus
         return new DamageInfoBatchPacket(List.copyOf(entries));
     }
 
+    private record MergedEntry(double amount, Vec3 pos, int color, int count) {}
+
     public static void handle(DamageInfoBatchPacket packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             var manager = ClientDamageInfoManager.getInstance();
             double minValue = ClientConfig.MIN_VALUE_DISPLAY.get();
-            for (DamageInfoData data : packet.entries) {
-                double amount = data.amount();
-                if (Math.abs(amount) < minValue) continue;
+            boolean showHeal = ClientConfig.SHOW_HEAL_NUMBERS.get();
 
-                var vec3 = data.pos();
-                int color = manager.getColor(data).getValue();
-                String typeKey = data.damageTypeKey();
+            if (ClientConfig.ENABLE_COMBINE_STRING.get()) {
+                var mergeMap = new Int2ObjectOpenHashMap<Object2ObjectOpenHashMap<String, MergedEntry>>();
+                for (DamageInfoData data : packet.entries) {
+                    double amount = data.amount();
+                    if (Math.abs(amount) < minValue) continue;
+                    if (!showHeal && "heal".equals(data.fallbackKey())) continue;
 
-                DamageString damageString = new DamageString(
-                        data.entityId(),
-                        (float) vec3.x, (float) vec3.y, (float) vec3.z,
-                        (float) amount,
-                        color,
-                        typeKey
-                );
-                manager.add(damageString);
+                    int entityId = data.entityId();
+                    String typeKey = data.damageTypeKey();
+                    var typeMap = mergeMap.computeIfAbsent(entityId, key -> new Object2ObjectOpenHashMap<>());
+                    MergedEntry existing = typeMap.get(typeKey);
+                    if (existing == null) {
+                        typeMap.put(typeKey, new MergedEntry(
+                                amount,
+                                data.pos(),
+                                manager.getColor(data).getValue(),
+                                0
+                        ));
+                    } else {
+                        typeMap.put(typeKey, new MergedEntry(
+                                existing.amount() + amount,
+                                existing.pos(),
+                                existing.color(),
+                                existing.count() + 1
+                        ));
+                    }
+                }
+
+                for (var entityEntry : mergeMap.int2ObjectEntrySet()) {
+                    int entityId = entityEntry.getIntKey();
+                    for (var typeEntry : entityEntry.getValue().object2ObjectEntrySet()) {
+                        MergedEntry merged = typeEntry.getValue();
+                        Vec3 pos = merged.pos();
+                        manager.add(new DamageString(
+                                entityId,
+                                (float) pos.x, (float) pos.y, (float) pos.z,
+                                (float) merged.amount(),
+                                merged.color(),
+                                typeEntry.getKey(),
+                                merged.count()
+                        ));
+                    }
+                }
+            } else {
+                for (DamageInfoData data : packet.entries) {
+                    double amount = data.amount();
+                    if (Math.abs(amount) < minValue) continue;
+                    if (!showHeal && "heal".equals(data.fallbackKey())) continue;
+
+                    Vec3 pos = data.pos();
+                    manager.add(new DamageString(
+                            data.entityId(),
+                            (float) pos.x, (float) pos.y, (float) pos.z,
+                            (float) amount,
+                            manager.getColor(data).getValue(),
+                            data.damageTypeKey()
+                    ));
+                }
             }
         });
     }

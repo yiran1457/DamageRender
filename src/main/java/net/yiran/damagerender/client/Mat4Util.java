@@ -1,4 +1,3 @@
-//? if forge {
 package net.yiran.damagerender.client;
 
  // 手写 fma 矩阵运算，绕开 {@link org.joml.Matrix4f} 的全量 4×4 乘法与对象分配。
@@ -77,4 +76,3 @@ public final class Mat4Util {
         outXYZ[2] = Math.fma(m21, py, Math.fma(m20, px, m23));
     }
 }
-//?}

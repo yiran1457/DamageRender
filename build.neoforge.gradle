@@ -65,14 +65,11 @@ neoForge {
 sourceSets.named('main') {
     java {
         exclude '**/DamageColorManager.java'
-        exclude '**/DamageNumberRenderer.java'
-        exclude '**/Mat4Util.java'
     }
     resources {
         exclude 'META-INF/mods.toml'
         exclude 'META-INF/accesstransformer.cfg'
         exclude 'pack.mcmeta'
-        exclude 'assets/damagerender/textures/**'
     }
 }
 

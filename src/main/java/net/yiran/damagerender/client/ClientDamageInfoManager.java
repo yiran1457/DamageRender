@@ -221,7 +221,7 @@ public class ClientDamageInfoManager {
 
                 float age = existing.getMaxLife() - existing.getLife();
                 if (age <= ClientConfig.MERGE_MAX_AGE.get()) {
-                    existing.mergeDamage(newString.getAmount());
+                    existing.mergeDamage(newString.getAmount(), newString.getX(), newString.getZ());
                     return;
                 }
             }
@@ -231,6 +231,10 @@ public class ClientDamageInfoManager {
         if (damageStringList.size() > ClientConfig.MAX_SHOW_RENDER.get()) {
             damageStringList.remove(0);
         }
+    }
+
+    public void removeDead() {
+        damageStringList.removeIf(DamageString::isDead);
     }
 
     public ObjectArrayList<DamageString> getDamageStringList() {

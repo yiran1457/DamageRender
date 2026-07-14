@@ -1,4 +1,3 @@
-//? if forge {
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -17,9 +16,9 @@ import net.yiran.damagerender.ClientConfig;
  //
 public class DamageNumberRenderer {
 
-     // 默认纹理路径（配置缺失或非法时兜底）。
+     // 默认纹理路径（配置缺失或非法时兜底）。用 tryParse 而非构造，兼容 1.21.1（构造已 private）。
     public static final ResourceLocation DEFAULT_TEXTURE =
-            new ResourceLocation("damagerender", "textures/damagefont/number_0.png");
+            ResourceLocation.tryParse("damagerender:textures/damagefont/number_0.png");
 
     public static final int CHAR_WIDTH = 6;
     public static final int CHAR_HEIGHT = 9;
@@ -96,13 +95,29 @@ public class DamageNumberRenderer {
             float y1 = y + CHAR_HEIGHT;
 
             Mat4Util.transformVertex(matrix, x0, y0, TMP_VERTEX);
+//? if =1.21.1 {
+            /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMin, 1f).setLight(packedLight);
+*///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 1f).uv2(packedLight).endVertex();
+//?}
             Mat4Util.transformVertex(matrix, x1, y0, TMP_VERTEX);
+//? if =1.21.1 {
+            /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMax, 1f).setLight(packedLight);
+*///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 1f).uv2(packedLight).endVertex();
+//?}
             Mat4Util.transformVertex(matrix, x1, y1, TMP_VERTEX);
+//? if =1.21.1 {
+            /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMax, 0f).setLight(packedLight);
+*///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 0f).uv2(packedLight).endVertex();
+//?}
             Mat4Util.transformVertex(matrix, x0, y1, TMP_VERTEX);
+//? if =1.21.1 {
+            /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMin, 0f).setLight(packedLight);
+*///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 0f).uv2(packedLight).endVertex();
+//?}
 
             cursorX += CHAR_WIDTH;
         }
@@ -126,4 +141,3 @@ public class DamageNumberRenderer {
         return width;
     }
 }
-//?}

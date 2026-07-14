@@ -63,9 +63,6 @@ neoForge {
 }
 
 sourceSets.named('main') {
-    java {
-        exclude '**/DamageColorManager.java'
-    }
     resources {
         exclude 'META-INF/mods.toml'
         exclude 'META-INF/accesstransformer.cfg'

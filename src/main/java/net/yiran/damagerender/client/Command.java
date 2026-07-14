@@ -368,17 +368,30 @@ public class Command {
 //?} else {
 /*package net.yiran.damagerender.client;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.yiran.damagerender.ClientConfig;
 
-import static net.yiran.damagerender.DamageRender.reloadDamageColorMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
  // 客户端命令。
- // 数值/布尔类配置项已迁移到 Mods 列表的配置界面，这里仅保留
- // 颜色映射重载：damagerender-damage-color.json 是自由格式 JSON，ModConfigSpec 不支持，
- // 命令是它的唯一重载入口。
+ // 数值/布尔类配置项已迁移到 Mods 列表的配置界面，这里保留与 Forge 版一致的
+ // 颜色映射命令：set/remove/list/reload，统一委托 {@link DamageColorManager}。
  //
 public class Command {
     @SubscribeEvent
@@ -386,17 +399,235 @@ public class Command {
         event.getDispatcher().register(
                 Commands.literal("damagerender")
                         .then(
+                                Commands.literal("minValueDisplay")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.MIN_VALUE_DISPLAY.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 minValueDisplay 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.MIN_VALUE_DISPLAY.get();
+                                            sendSuccess(ctx.getSource(), "配置项 minValueDisplay 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("maxShowRender")
+                                        .then(
+                                                Commands.argument("value", IntegerArgumentType.integer(0))
+                                                        .executes(ctx -> {
+                                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                            ClientConfig.MAX_SHOW_RENDER.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 maxShowRender 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            int value = ClientConfig.MAX_SHOW_RENDER.get();
+                                            sendSuccess(ctx.getSource(), "配置项 maxShowRender 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("enableCombineString")
+                                        .then(
+                                                Commands.argument("value", BoolArgumentType.bool())
+                                                        .executes(ctx -> {
+                                                            boolean value = BoolArgumentType.getBool(ctx, "value");
+                                                            ClientConfig.ENABLE_COMBINE_STRING.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 enableCombineString 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            boolean value = ClientConfig.ENABLE_COMBINE_STRING.get();
+                                            sendSuccess(ctx.getSource(), "配置项 enableCombineString 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("mergeMaxAge")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.MERGE_MAX_AGE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 mergeMaxAge 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.MERGE_MAX_AGE.get();
+                                            sendSuccess(ctx.getSource(), "配置项 mergeMaxAge 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("damageStringLife")
+                                        .then(
+                                                Commands.argument("value", IntegerArgumentType.integer(5, 600))
+                                                        .executes(ctx -> {
+                                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                            ClientConfig.DAMAGE_STRING_LIFE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 damageStringLife 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            int value = ClientConfig.DAMAGE_STRING_LIFE.get();
+                                            sendSuccess(ctx.getSource(), "配置项 damageStringLife 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("texture")
+                                        .then(
+                                                Commands.argument("value", STRING_ALLOWING_COLON)
+                                                        .suggests(TEXTURE_SUGGESTIONS)
+                                                        .executes(ctx -> {
+                                                            String value = ctx.getArgument("value", String.class);
+                                                            if (net.minecraft.resources.ResourceLocation.tryParse(value) == null) {
+                                                                ctx.getSource().sendFailure(Component.literal("无效的资源路径 : " + value + "（需为 namespace:path 格式）"));
+                                                                return 0;
+                                                            }
+                                                            ClientConfig.TEXTURE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 texture 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            String value = ClientConfig.TEXTURE.get();
+                                            sendSuccess(ctx.getSource(), "配置项 texture 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("setDamageColor")
                                         .then(
                                                 Commands.literal("reload")
                                                         .executes(ctx -> {
-                                                            reloadDamageColorMap();
-                                                            ctx.getSource().sendSuccess(() -> Component.literal("已重载伤害颜色映射"), false);
+                                                            DamageColorManager.getInstance().reload();
+                                                            sendSuccess(ctx.getSource(), "已重载伤害颜色映射");
                                                             return 1;
                                                         })
                                         )
+                                        .then(
+                                                Commands.literal("remove")
+                                                        .then(
+                                                                Commands.argument("damageType", STRING_ALLOWING_COLON)
+                                                                        .suggests(DAMAGE_TYPE_SUGGESTIONS)
+                                                                        .executes(ctx -> {
+                                                                            String key = ctx.getArgument("damageType", String.class);
+                                                                            boolean removed = DamageColorManager.getInstance().remove(key);
+                                                                            if (removed) {
+                                                                                sendSuccess(ctx.getSource(), "已移除伤害颜色 : " + key);
+                                                                                return 1;
+                                                                            }
+                                                                            ctx.getSource().sendFailure(Component.literal("未找到伤害类型 : " + key));
+                                                                            return 0;
+                                                                        })
+                                                        )
+                                        )
+                                        .then(
+                                                Commands.literal("list")
+                                                        .executes(ctx -> {
+                                                            var map = DamageColorManager.getInstance().getMap();
+                                                            if (map.isEmpty()) {
+                                                                sendSuccess(ctx.getSource(), "当前颜色映射为空");
+                                                                return 1;
+                                                            }
+                                                            map.forEach((k, v) ->
+                                                                    sendSuccess(ctx.getSource(), k + " : " + v.serialize()));
+                                                            sendSuccess(ctx.getSource(), "共 " + map.size() + " 项");
+                                                            return 1;
+                                                        })
+                                        )
+                                        .then(
+                                                Commands.argument("damageType", STRING_ALLOWING_COLON)
+                                                        .suggests(DAMAGE_TYPE_SUGGESTIONS)
+                                                        .then(
+                                                                Commands.argument("color", STRING_ALLOWING_COLON)
+                                                                        .executes(ctx -> {
+                                                                            String key = ctx.getArgument("damageType", String.class);
+                                                                            String colorInput = ctx.getArgument("color", String.class);
+                                                                            TextColor color = parseColorInput(colorInput);
+                                                                            if (color == null) {
+                                                                                ctx.getSource().sendFailure(Component.literal("无效颜色 : " + colorInput + "（支持 #RRGGBB、颜色名、十进制整数）"));
+                                                                                return 0;
+                                                                            }
+                                                                            DamageColorManager.getInstance().put(key, color);
+                                                                            sendSuccess(ctx.getSource(), "伤害颜色 " + key + " 设置为 : " + color.serialize());
+                                                                            return 1;
+                                                                        })
+                                                        )
+                                        )
                         )
         );
+    }
+
+    private static void sendSuccess(CommandSourceStack source, String message) {
+        source.sendSuccess(() -> Component.literal(message), false);
+    }
+
+    private static final ArgumentType<String> STRING_ALLOWING_COLON = new ArgumentType<>() {
+        @Override
+        public String parse(StringReader reader) throws CommandSyntaxException {
+            int start = reader.getCursor();
+            while (reader.canRead() && !Character.isWhitespace(reader.peek())) {
+                reader.skip();
+            }
+            if (reader.getCursor() == start) {
+                throw new SimpleCommandExceptionType(
+                        Component.literal("需要提供参数值")).create();
+            }
+            return reader.getString().substring(start, reader.getCursor());
+        }
+    };
+
+    private static final SuggestionProvider<CommandSourceStack> DAMAGE_TYPE_SUGGESTIONS =
+            (ctx, builder) -> {
+                Set<String> candidates = new LinkedHashSet<>();
+                try {
+                    ctx.getSource().registryAccess()
+                            .registry(Registries.DAMAGE_TYPE)
+                            .ifPresent(reg -> reg.registryKeySet()
+                                    .forEach(rk -> candidates.add(rk.location().toString())));
+                } catch (Exception ignored) {
+                }
+                candidates.add("heal");
+                candidates.addAll(DamageColorManager.getInstance().getMap().keySet());
+                return SharedSuggestionProvider.suggest(candidates, builder);
+            };
+
+    private static final SuggestionProvider<CommandSourceStack> TEXTURE_SUGGESTIONS =
+            (ctx, builder) -> {
+                java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
+                try {
+                    net.minecraft.server.packs.resources.ResourceManager rm =
+                            net.minecraft.client.Minecraft.getInstance().getResourceManager();
+                    java.util.Collection<net.minecraft.resources.ResourceLocation> textures =
+                            rm.listResources("textures", rl ->
+                                    rl.getNamespace().equals("damagerender") && rl.getPath().endsWith(".png"))
+                                    .keySet();
+                    textures.forEach(rl -> candidates.add(rl.toString()));
+                } catch (Exception ignored) {
+                }
+                return SharedSuggestionProvider.suggest(candidates, builder);
+            };
+
+    private static TextColor parseColorInput(String input) {
+        // 1.21.1: TextColor.parseColor 返回 DataResult<TextColor>（不再返回可空 TextColor）
+        return TextColor.parseColor(input).result().orElse(null);
     }
 }
 *///?}

@@ -1,4 +1,3 @@
-//? if forge {
 package net.yiran.damagerender.client;
 
 import com.google.gson.JsonElement;
@@ -10,7 +9,11 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.TextColor;
+//? if forge {
 import net.minecraftforge.fml.loading.FMLPaths;
+//?} else {
+/*import net.neoforged.fml.loading.FMLPaths;
+*///?}
 
 import java.io.IOException;
 import java.io.Writer;
@@ -192,4 +195,3 @@ public class DamageColorManager {
         return existed;
     }
 }
-//?}

@@ -35,7 +35,7 @@ public class DamageRender {
                 PROTOCOL_VERSION::equals
         );
         MinecraftForge.EVENT_BUS.register(ServerEventHandler.class);
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (DistCompat.isClient()) {
             MinecraftForge.EVENT_BUS.register(ClientEventHandler.class);
             MinecraftForge.EVENT_BUS.register(Command.class);
         }
@@ -86,7 +86,7 @@ public class DamageRender {
         mod.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         NeoForge.EVENT_BUS.register(ServerEventHandler.class);
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (DistCompat.isClient()) {
             NeoForge.EVENT_BUS.register(ClientEventHandler.class);
             NeoForge.EVENT_BUS.register(Command.class);
             // 注册 Mods 列表里的配置界面（仅客户端）

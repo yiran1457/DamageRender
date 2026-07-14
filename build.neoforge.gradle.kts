@@ -17,10 +17,12 @@ val modLicense = project.property("mod_license").toString()
 
 val targetMinecraftVersion = project.property("minecraft_version").toString()
 val neoVersion = project.property("neo_version").toString()
-val loaderVersionRange = project.property("loader_version_range").toString()
+val loaderVersionRange = project.findProperty("loader_version_range")?.toString()
 val minecraftVersionRange = project.property("minecraft_version_range").toString()
-val parchmentMinecraftVersion = project.property("parchment_minecraft_version").toString()
-val parchmentMappingsVersion = project.property("parchment_mappings_version").toString()
+val parchmentMinecraftVersion = project.findProperty("parchment_minecraft_version")?.toString()
+val parchmentMappingsVersion = project.findProperty("parchment_mappings_version")?.toString()
+val javaVersion = project.findProperty("java_version")?.toString()?.toInt() ?: 21
+val metadataTemplateDirectory = project.findProperty("metadata_template_dir")?.toString() ?: "src/main/templates"
 
 version = modVersion
 group = modGroupId
@@ -30,7 +32,7 @@ base {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
     withSourcesJar()
 }
 
@@ -44,9 +46,11 @@ repositories {
 neoForge {
     version = neoVersion
 
-    parchment {
-        mappingsVersion.set(parchmentMappingsVersion)
-        minecraftVersion.set(parchmentMinecraftVersion)
+    if (parchmentMinecraftVersion != null && parchmentMappingsVersion != null) {
+        parchment {
+            mappingsVersion.set(parchmentMappingsVersion)
+            minecraftVersion.set(parchmentMinecraftVersion)
+        }
     }
 
     runs {
@@ -80,19 +84,19 @@ sourceSets.named("main") {
 }
 
 val generateModMetadata = tasks.register<ProcessResources>("generateModMetadata") {
-    val replaceProperties = mapOf(
+    val replaceProperties = mutableMapOf(
         "minecraft_version" to targetMinecraftVersion,
         "minecraft_version_range" to minecraftVersionRange,
         "neo_version" to neoVersion,
-        "loader_version_range" to loaderVersionRange,
         "mod_id" to modId,
         "mod_name" to modName,
         "mod_license" to modLicense,
         "mod_version" to modVersion,
     )
+    loaderVersionRange?.let { replaceProperties["loader_version_range"] = it }
     inputs.properties(replaceProperties)
     expand(replaceProperties)
-    from(rootProject.layout.projectDirectory.dir("src/main/templates"))
+    from(rootProject.layout.projectDirectory.dir(metadataTemplateDirectory))
     into(layout.buildDirectory.dir("generated/sources/modMetadata"))
 }
 

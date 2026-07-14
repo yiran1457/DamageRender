@@ -1,8 +1,14 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+//? if >1.21.1 {
+/*import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
+*///?} else {
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+//?}
 import net.yiran.damagerender.ClientConfig;
 
  // 使用纹理图集渲染伤害数字，替代 Font.drawInBatch。
@@ -17,8 +23,13 @@ import net.yiran.damagerender.ClientConfig;
 public class DamageNumberRenderer {
 
      // 默认纹理路径（配置缺失或非法时兜底）。用 tryParse 而非构造，兼容 1.21.1（构造已 private）。
+//? if >1.21.1 {
+    /*public static final Identifier DEFAULT_TEXTURE =
+            Identifier.tryParse("damagerender:textures/damagefont/number_0.png");
+*///?} else {
     public static final ResourceLocation DEFAULT_TEXTURE =
             ResourceLocation.tryParse("damagerender:textures/damagefont/number_0.png");
+//?}
 
     public static final int CHAR_WIDTH = 6;
     public static final int CHAR_HEIGHT = 9;
@@ -46,9 +57,17 @@ public class DamageNumberRenderer {
      //
      // @return 当前生效的纹理 ResourceLocation
      //
+//? if >1.21.1 {
+    /*public static Identifier getTexture() {
+*///?} else {
     public static ResourceLocation getTexture() {
+//?}
         String value = ClientConfig.TEXTURE.get();
+//? if >1.21.1 {
+        /*Identifier parsed = Identifier.tryParse(value);
+*///?} else {
         ResourceLocation parsed = ResourceLocation.tryParse(value);
+//?}
         return parsed != null ? parsed : DEFAULT_TEXTURE;
     }
 
@@ -57,7 +76,11 @@ public class DamageNumberRenderer {
      // @return 与当前纹理绑定的 RenderType（POSITION_COLOR_TEX_LIGHTMAP，支持半透明和光照）
      //
     public static RenderType getRenderType() {
+//? if >1.21.1 {
+        /*return RenderTypes.text(getTexture());
+*///?} else {
         return RenderType.text(getTexture());
+//?}
     }
 
          // 使用纹理图集渲染一串伤害数字，顶点经 {@code matrix} 手写 fma 变换。
@@ -95,25 +118,25 @@ public class DamageNumberRenderer {
             float y1 = y + CHAR_HEIGHT;
 
             Mat4Util.transformVertex(matrix, x0, y0, TMP_VERTEX);
-//? if =1.21.1 {
+//? if >1.20.1 {
             /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMin, 1f).setLight(packedLight);
 *///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 1f).uv2(packedLight).endVertex();
 //?}
             Mat4Util.transformVertex(matrix, x1, y0, TMP_VERTEX);
-//? if =1.21.1 {
+//? if >1.20.1 {
             /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMax, 1f).setLight(packedLight);
 *///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 1f).uv2(packedLight).endVertex();
 //?}
             Mat4Util.transformVertex(matrix, x1, y1, TMP_VERTEX);
-//? if =1.21.1 {
+//? if >1.20.1 {
             /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMax, 0f).setLight(packedLight);
 *///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMax, 0f).uv2(packedLight).endVertex();
 //?}
             Mat4Util.transformVertex(matrix, x0, y1, TMP_VERTEX);
-//? if =1.21.1 {
+//? if >1.20.1 {
             /*consumer.addVertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).setColor(r, g, b, a).setUv(uMin, 0f).setLight(packedLight);
 *///?} else {
             consumer.vertex(TMP_VERTEX[0], TMP_VERTEX[1], TMP_VERTEX[2]).color(r, g, b, a).uv(uMin, 0f).uv2(packedLight).endVertex();

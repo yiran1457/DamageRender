@@ -244,7 +244,11 @@ public class Command {
                                                         .suggests(TEXTURE_SUGGESTIONS)
                                                         .executes(ctx -> {
                                                             String value = ctx.getArgument("value", String.class);
+//? if >1.21.1 {
+                                                            /*if (net.minecraft.resources.Identifier.tryParse(value) == null) {
+*///?} else {
                                                             if (net.minecraft.resources.ResourceLocation.tryParse(value) == null) {
+//?}
                                                                 ctx.getSource().sendFailure(Component.literal("无效的资源路径 : " + value + "（需为 namespace:path 格式）"));
                                                                 return 0;
                                                             }
@@ -360,10 +364,17 @@ public class Command {
                 Set<String> candidates = new LinkedHashSet<>();
 //? if >1.19.2 {
                 try {
+//? if >1.21.1 {
+                    /*ctx.getSource().registryAccess()
+                            .lookup(Registries.DAMAGE_TYPE)
+                            .ifPresent(reg -> reg.registryKeySet()
+                                    .forEach(key -> candidates.add(key.identifier().toString())));
+*///?} else {
                     ctx.getSource().registryAccess()
                             .registry(Registries.DAMAGE_TYPE)
                             .ifPresent(reg -> reg.registryKeySet()
                                     .forEach(key -> candidates.add(key.location().toString())));
+//?}
                 } catch (Exception ignored) {
                 }
 //?}
@@ -381,7 +392,11 @@ public class Command {
                 try {
                     net.minecraft.server.packs.resources.ResourceManager rm =
                             net.minecraft.client.Minecraft.getInstance().getResourceManager();
+//? if >1.21.1 {
+                    /*java.util.Collection<net.minecraft.resources.Identifier> textures =
+*///?} else {
                     java.util.Collection<net.minecraft.resources.ResourceLocation> textures =
+//?}
                             rm.listResources("textures", rl ->
                                     rl.getNamespace().equals("damagerender") && rl.getPath().endsWith(".png"))
                                     .keySet();
@@ -394,7 +409,7 @@ public class Command {
          // 解析颜色输入：支持 #RRGGBB、命名颜色（red/green…）、十进制整数（含 0x 前缀）。失败返回 null。
      //
     private static TextColor parseColorInput(String input) {
-//? if =1.21.1 {
+//? if >1.20.1 {
         /*return TextColor.parseColor(input).result().orElse(null);
 *///?} else {
         TextColor color = TextColor.parseColor(input);

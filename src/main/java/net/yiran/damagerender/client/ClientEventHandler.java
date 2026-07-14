@@ -18,6 +18,9 @@ import net.yiran.damagerender.DamageRender;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 *///?}
+//? if >1.21.1 {
+/*import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
+*///?}
 //? if =1.19.2 {
 /*import com.mojang.math.Matrix4f;
 
@@ -48,6 +51,42 @@ public class ClientEventHandler {
 *///?}
     }
 
+//? if >1.21.1 {
+    /*@SubscribeEvent
+    public static void render(SubmitCustomGeometryEvent event) {
+        PoseStack poseStack = event.getPoseStack();
+        var cameraState = event.getLevelRenderState().cameraRenderState;
+        Vec3 cameraPos = cameraState.pos;
+        Minecraft mc = Minecraft.getInstance();
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaTicks();
+
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+
+        Matrix4f baseRS = new Matrix4f()
+                .rotate(cameraState.orientation)
+                .scale(DamageString.RENDER_SCALE);
+        baseRS.get(BASE_RS_ARR);
+
+        float drag = (float) Math.pow(DamageString.DRAG_FACTOR, partialTick);
+        float bounceDecay = (float) Math.pow(DamageString.BOUNCE_DECAY, partialTick);
+        ClientDamageInfoManager manager = ClientDamageInfoManager.getInstance();
+
+        event.getSubmitNodeCollector().submitCustomGeometry(
+                poseStack,
+                DamageNumberRenderer.getRenderType(),
+                (pose, consumer) -> {
+                    pose.pose().get(VIEW_ARR);
+                    for (DamageString damageString : manager.getDamageStringList()) {
+                        damageString.render(VIEW_ARR, BASE_RS_ARR, consumer, partialTick, drag, bounceDecay);
+                    }
+                    manager.removeDead();
+                }
+        );
+
+        poseStack.popPose();
+    }
+*///?} else {
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
 //? if =1.19.2 {
@@ -115,4 +154,5 @@ public class ClientEventHandler {
 
         poseStack.popPose();
     }
+//?}
 }

@@ -48,19 +48,39 @@ public class ServerEventHandler {
 //?}
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }
-//?} else {
+//?}
+//? if neoforge && =1.21.1 {
     /*@SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDamage(LivingDamageEvent.Post event) {
         LivingEntity entity = event.getEntity();
         DamageSource source = event.getSource();
-        if (event.getNewDamage() <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
+        float damage = event.getNewDamage();
+        if (damage <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
 
         var data = new DamageInfoData(
                 entity.getId(),
                 source.typeHolder(),
                 null,
                 entity.position().add(0, entity.getBbHeight(), 0),
-                event.getNewDamage()
+                damage
+        );
+        ServerDamageInfoManager.instance.enqueue(entity, data);
+    }
+*///?}
+//? if neoforge && >1.21.1 {
+    /*@SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onDamage(LivingDamageEvent.Post event) {
+        LivingEntity entity = event.getEntity();
+        DamageSource source = event.getSource();
+        float damage = event.getHealthDamage();
+        if (damage <= 0 || source.typeHolder().unwrapKey().isEmpty()) return;
+
+        var data = new DamageInfoData(
+                entity.getId(),
+                source.typeHolder(),
+                null,
+                entity.position().add(0, entity.getBbHeight(), 0),
+                damage
         );
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }

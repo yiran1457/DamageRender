@@ -1,7 +1,11 @@
 package net.yiran.damagerender.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
+//? if >1.21.1 {
+/*import net.minecraft.util.LightCoordsUtil;
+*///?} else {
 import net.minecraft.client.renderer.LightTexture;
+//?}
 import net.minecraft.util.Mth;
 import net.yiran.damagerender.ClientConfig;
 
@@ -298,7 +302,11 @@ public class DamageString {
                 halfWidth,
                 -DamageNumberRenderer.CHAR_HEIGHT / 2f,
                 this.color,
+//? if >1.21.1 {
+                /*LightCoordsUtil.FULL_BRIGHT
+*///?} else {
                 LightTexture.FULL_BRIGHT
+//?}
         );
     }
 }

@@ -48,7 +48,11 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+//? if >1.21.1 {
+import net.minecraft.resources.Identifier;
+//?} else {
 import net.minecraft.resources.ResourceLocation;
+//?}
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.client.ClientDamagePacketHandler;
@@ -58,7 +62,11 @@ import java.util.List;
 // Server-to-client payload containing all visible damage entries for one tick.
 public record DamageInfoBatchPacket(List<DamageInfoData> entries) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<DamageInfoBatchPacket> TYPE =
+//? if >1.21.1 {
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(
+//?} else {
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(
+//?}
                     DamageRender.MODID,
                     "damage_info_batch"
             ));

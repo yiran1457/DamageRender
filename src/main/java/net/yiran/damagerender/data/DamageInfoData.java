@@ -174,7 +174,7 @@ public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHold
     public String damageTypeKey() {
         if (fallbackKey != null) return fallbackKey;
         return typeHolder != null && typeHolder.unwrapKey().isPresent()
-                ? typeHolder.unwrapKey().get().location().toString()
+                ? ResourceKeyCompat.identifierString(typeHolder.unwrapKey().get())
                 : "unknown";
     }
 

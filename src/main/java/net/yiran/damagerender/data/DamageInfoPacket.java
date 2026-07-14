@@ -37,7 +37,11 @@ public class DamageInfoPacket {
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+//? if >1.21.1 {
+import net.minecraft.resources.Identifier;
+//?} else {
 import net.minecraft.resources.ResourceLocation;
+//?}
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.yiran.damagerender.DamageRender;
 import net.yiran.damagerender.client.ClientDamagePacketHandler;
@@ -45,7 +49,11 @@ import net.yiran.damagerender.client.ClientDamagePacketHandler;
 // Server-to-client payload containing one damage entry.
 public record DamageInfoPacket(DamageInfoData data) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<DamageInfoPacket> TYPE =
+//? if >1.21.1 {
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(DamageRender.MODID, "damage_info"));
+//?} else {
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DamageRender.MODID, "damage_info"));
+//?}
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DamageInfoPacket> STREAM_CODEC =
             StreamCodec.composite(

@@ -3,9 +3,7 @@ package net.yiran.damagerender.client;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.network.chat.TextColor;
 import net.yiran.damagerender.ClientConfig;
-import net.yiran.damagerender.data.DamageInfoData;
 
 /** Maintains active damage strings and constant-time merge indexes. */
 public class ClientDamageInfoManager {
@@ -20,16 +18,6 @@ public class ClientDamageInfoManager {
     public static ClientDamageInfoManager getInstance() {
         return INSTANCE;
     }
-
-//? if neoforge {
-/*    public TextColor getColor(DamageInfoData damageInfo) {
-        DamageColorManager manager = DamageColorManager.getInstance();
-        TextColor color = manager.getColor(damageInfo.damageTypeKey());
-        return color != DamageColorManager.DEFAULT_COLOR
-                ? color
-                : manager.getColor(damageInfo.msgId());
-    }
-*///?}
 
     public void add(DamageString newString) {
         boolean combineType = ClientConfig.ENABLE_COMBINE_STRING.get();

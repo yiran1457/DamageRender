@@ -34,6 +34,14 @@ public record DamageInfoData(int entityId, String typeKey, Vec3 pos, double amou
         double amount = buf.readDouble();
         return new DamageInfoData(entityId, typeKey, pos, amount);
     }
+
+    public String damageTypeKey() {
+        return typeKey;
+    }
+
+    public String msgId() {
+        return typeKey;
+    }
 }
 *///?} else {
 package net.yiran.damagerender.data;
@@ -91,7 +99,15 @@ public record DamageInfoData(int entityId, @Nullable ResourceLocation damageType
      //
     public String msgId() {
         if (fallbackKey != null) return fallbackKey;
-        return damageTypeLocation != null ? Minecraft.getInstance().getConnection().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).get(damageTypeLocation).msgId() : "unknown";
+        if (damageTypeLocation == null) return "unknown";
+
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection == null) return damageTypeLocation.getPath();
+
+        var damageType = connection.registryAccess()
+                .registryOrThrow(Registries.DAMAGE_TYPE)
+                .get(damageTypeLocation);
+        return damageType != null ? damageType.msgId() : damageTypeLocation.getPath();
     }
 }
 //?}

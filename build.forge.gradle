@@ -2,7 +2,6 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'net.neoforged.moddev.legacyforge'
-    id 'neoforge-mutex'
 }
 
 // 来自 gradle.properties 的属性。Groovy 用 project.findProperty 取值并转 String。
@@ -22,7 +21,7 @@ def minecraft_version_range = project.findProperty('minecraft_version_range') as
 def parchment_mc = project.findProperty('parchment_minecraft_version') as String
 def parchment_mappings = project.findProperty('parchment_mappings_version') as String
 
-version = "${mod_version}+${minecraft_version}-forge"
+version = "${mod_version}"
 group = mod_group_id
 base {
     archivesName = "${mod_name}-${minecraft_version}-Forge"

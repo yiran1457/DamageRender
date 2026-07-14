@@ -68,7 +68,7 @@ public class DamageString {
     private static final float HORIZONTAL_SPEED = 0.2f;
          // 合并时新老坐标距离小于此值则不动量转移（飘字保持原动量），≥此值才朝新位置漂移。
      //
-    private static final float MERGE_AIM_THRESHOLD = 1f;
+    private static final float MERGE_AIM_THRESHOLD = 2f;
     private static final float SHRINK_DURATION = 3f;
          // 弹跳衰减率：每 tick 衰减为此倍（向 1.0 收敛）。循环外预算 BOUNCE_DECAY^partialTick 后传入。
      //

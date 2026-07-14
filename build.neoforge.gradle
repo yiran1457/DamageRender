@@ -1,6 +1,5 @@
 plugins {
     id 'net.neoforged.moddev'
-    id 'neoforge-mutex'
     id 'maven-publish'
 }
 
@@ -17,7 +16,7 @@ def mcRange = project.findProperty('minecraft_version_range') as String
 def parchmentMc = project.findProperty('parchment_minecraft_version') as String
 def parchmentMappings = project.findProperty('parchment_mappings_version') as String
 
-version = "${modVersion}+${minecraftVersion}-neoforge"
+version = "${modVersion}"
 group = modGroup
 base.archivesName = "${modName}-${minecraftVersion}-NeoForge"
 

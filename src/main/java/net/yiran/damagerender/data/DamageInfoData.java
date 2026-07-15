@@ -5,17 +5,7 @@
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
 
- // 一次伤害/治疗的信息，服务端发往客户端用于渲染飘字。
- //
- // <p>不再区分 ResourceLocation 与 fallbackKey，统一使用 {@link #typeKey} 字符串。
- // 伤害类型使用 {@code DamageSource.getMsgId()} 的结果（如 "inFire"、"mob"），
- // 治疗使用固定字符串 {@code "heal"}。
- //
- // @param entityId 受击/治疗实体的网络 id，客户端据此判断飘字是否可合并到同一实体
- // @param typeKey  伤害类型标识（msgId），如 "inFire"、"mob"、"heal"
- // @param pos      伤害发生的位置（实体头部高度）
- // @param amount   伤害/治疗数值
- //
+ // 1.19.2 使用伤害类型的 msgId；治疗固定为 "heal"。
 public record DamageInfoData(int entityId, String typeKey, Vec3 pos, double amount) {
 
     public static void toBytes(DamageInfoData data, FriendlyByteBuf buf) {
@@ -53,17 +43,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
- // 一次伤害/治疗的信息，服务端发往客户端用于渲染飘字。
- // 
- // <p>正常伤害传 {@link #damageTypeLocation}（来自 {@link net.minecraft.world.damagesource.DamageSource#typeHolder()}
- // 的 registry key），网络上发 {@link ResourceLocation}（注册表 key，稳定）；
- // {@link #fallbackKey} 为 null。
- // 
- // <p>治疗（heal）不是真实注册的 DamageType，没有合法 location，因此走 {@link #fallbackKey} 旁路
- // （如 "heal"），此时 {@link #damageTypeLocation} 为 null。
- // 
- // <p>{@link #entityId} 为受击/治疗实体的网络 id，客户端据此判断飘字是否可合并到同一实体。
- //
+ // 服务端发送给客户端的伤害或治疗数据。
+ // 正常伤害使用注册表位置；治疗等无注册表类型的事件使用 fallbackKey。
 public record DamageInfoData(int entityId, @Nullable ResourceLocation damageTypeLocation, @Nullable String fallbackKey,
                              Vec3 pos, double amount) {
 
@@ -86,17 +67,13 @@ public record DamageInfoData(int entityId, @Nullable ResourceLocation damageType
         return new DamageInfoData(entityId, damageTypeLocation, fallbackKey, pos, amount);
     }
 
-         // 颜色映射/合并用的 type key：优先取 fallbackKey（heal），否则取 damage_type 的 registry key 字符串
-     // （如 "minecraft:in_fire"）。
-     //
+    // 用于颜色映射和合并的稳定类型键。
     public String damageTypeKey() {
         if (fallbackKey != null) return fallbackKey;
         return damageTypeLocation != null ? damageTypeLocation.toString() : "unknown";
     }
 
-         // 伤害类型的 msgId 兜底（1.20.1 网络上不再传 Holder，无法从 location 精确反查原 getMsgId()）。
-     // heal 走 fallbackKey；正常伤害用 location 的 path 作为兜底，与 {@link #damageTypeKey()} 互补。
-     //
+    /** 尽力恢复伤害类型的 msgId；注册表未就绪时使用资源路径。 */
     public String msgId() {
         if (fallbackKey != null) return fallbackKey;
         if (damageTypeLocation == null) return "unknown";
@@ -124,16 +101,7 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
- // 一次伤害/治疗的信息，服务端发往客户端用于渲染飘字。
- //
- // <p>正常伤害传 {@link #typeHolder}（来自 {@link net.minecraft.world.damagesource.DamageSource#typeHolder()}），
- // 网络上只发一个 damage_type registry 的 int id，比发两个字符串省流量；{@link #fallbackKey} 为 null。
- //
- // <p>治疗（heal）不是真实注册的 DamageType，没有合法 Holder，因此走 {@link #fallbackKey} 旁路
- // （如 "heal"），此时 {@link #typeHolder} 为 null。
- //
- // <p>{@link #entityId} 为受击/治疗实体的网络 id，客户端据此判断飘字是否可合并到同一实体。
- //
+ // NeoForge 使用 DamageType 的 Holder 进行紧凑网络编码；治疗使用 fallbackKey。
 public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHolder, @Nullable String fallbackKey,
                              Vec3 pos, double amount) {
 
@@ -168,9 +136,7 @@ public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHold
         return new DamageInfoData(entityId, typeHolder, fallbackKey, pos, amount);
     }
 
-         // 颜色映射/合并用的 type key：优先取 fallbackKey（heal），否则取 damage_type 的 registry key 字符串
-     // （如 "minecraft:in_fire"），与原 1.20.1 行为一致。
-     //
+    // 用于颜色映射和合并的稳定类型键。
     public String damageTypeKey() {
         if (fallbackKey != null) return fallbackKey;
         return typeHolder != null && typeHolder.unwrapKey().isPresent()
@@ -178,9 +144,7 @@ public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHold
                 : "unknown";
     }
 
-         // 伤害类型的 msgId（原 DamageSource.getMsgId()）。正常伤害从 Holder.value().msgId() 取，
-     // heal 走 fallbackKey。
-     //
+    // 返回伤害类型的显示键；治疗等特殊事件返回 fallbackKey。
     public String msgId() {
         if (fallbackKey != null) return fallbackKey;
         return typeHolder != null ? typeHolder.value().msgId() : "unknown";

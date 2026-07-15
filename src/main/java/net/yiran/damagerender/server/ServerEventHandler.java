@@ -100,7 +100,7 @@ public class ServerEventHandler {
         ServerDamageInfoManager.instance.enqueue(entity, data);
     }
 
-    /** Flushes all damage accumulated during this tick. */
+    /** 在服务端 tick 结束时发送本 tick 累积的伤害。 */
 //? if forge {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {

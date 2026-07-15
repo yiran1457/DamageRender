@@ -41,8 +41,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 //? if >1.21.1 {
-import net.minecraft.resources.Identifier;
-//?} else {
+/^import net.minecraft.resources.Identifier;
+^///?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
 import net.minecraft.server.level.ServerPlayer;
@@ -55,8 +55,8 @@ import net.yiran.damagerender.server.ServerDamageInfoManager;
 public record UpdateConfigPacket(int distance) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<UpdateConfigPacket> TYPE =
 //? if >1.21.1 {
-            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(DamageRender.MODID, "update_config"));
-//?} else {
+            /^new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(DamageRender.MODID, "update_config"));
+^///?} else {
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(DamageRender.MODID, "update_config"));
 //?}
 

@@ -31,7 +31,9 @@ import net.yiran.damagerender.data.UpdateConfigPacket;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/** Client commands for configuration and persistent damage-color mappings. */
+/**
+ * Client commands for configuration and persistent damage-color mappings.
+ */
 public class Command {
     @SubscribeEvent
     public static void commandRegister(RegisterClientCommandsEvent event) {
@@ -246,7 +248,7 @@ public class Command {
                                                             String value = ctx.getArgument("value", String.class);
 //? if >1.21.1 {
                                                             /*if (net.minecraft.resources.Identifier.tryParse(value) == null) {
-*///?} else {
+                                                             *///?} else {
                                                             if (net.minecraft.resources.ResourceLocation.tryParse(value) == null) {
 //?}
                                                                 ctx.getSource().sendFailure(Component.literal("无效的资源路径 : " + value + "（需为 namespace:path 格式）"));
@@ -331,7 +333,7 @@ public class Command {
     private static void sendSuccess(CommandSourceStack source, String message) {
 //? if =1.19.2 {
         /*source.sendSuccess(Component.literal(message), false);
-*///?} else {
+         *///?} else {
         source.sendSuccess(() -> Component.literal(message), false);
 //?}
     }
@@ -342,7 +344,7 @@ public class Command {
         DamageRender.NETWORK.sendToServer(new UpdateConfigPacket(distance));
 //?} else {
         /*Minecraft.getInstance().getConnection().send(new UpdateConfigPacket(distance));
-*///?}
+         *///?}
     }
 
     private static final ArgumentType<String> STRING_ALLOWING_COLON = new ArgumentType<>() {
@@ -382,10 +384,10 @@ public class Command {
                 candidates.addAll(DamageColorManager.getInstance().getMap().keySet());
                 return SharedSuggestionProvider.suggest(candidates, builder);
             };
-
-         // texture 参数的 Tab 补全：列出 mod 内置纹理（assets/damagerender/textures/*.png），
-     // 形如 {@code damagerender:textures/damagefont/number.png}，便于切换皮肤。
-     //
+    /**
+     * texture 参数的 Tab 补全：列出 mod 内置纹理（assets/damagerender/textures/*.png），
+     * 形如 {@code damagerender:textures/damagefont/number.png}，便于切换皮肤。
+     */
     private static final SuggestionProvider<CommandSourceStack> TEXTURE_SUGGESTIONS =
             (ctx, builder) -> {
                 java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
@@ -394,11 +396,11 @@ public class Command {
                             net.minecraft.client.Minecraft.getInstance().getResourceManager();
 //? if >1.21.1 {
                     /*java.util.Collection<net.minecraft.resources.Identifier> textures =
-*///?} else {
+                     *///?} else {
                     java.util.Collection<net.minecraft.resources.ResourceLocation> textures =
 //?}
                             rm.listResources("textures", rl ->
-                                    rl.getNamespace().equals("damagerender") && rl.getPath().endsWith(".png"))
+                                            rl.getNamespace().equals("damagerender") && rl.getPath().endsWith(".png"))
                                     .keySet();
                     textures.forEach(rl -> candidates.add(rl.toString()));
                 } catch (Exception ignored) {
@@ -406,12 +408,13 @@ public class Command {
                 return SharedSuggestionProvider.suggest(candidates, builder);
             };
 
-         // 解析颜色输入：支持 #RRGGBB、命名颜色（red/green…）、十进制整数（含 0x 前缀）。失败返回 null。
-     //
+    /**
+     * 解析颜色输入：支持 #RRGGBB、命名颜色（red/green…）、十进制整数（含 0x 前缀）。失败返回 null。
+     */
     private static TextColor parseColorInput(String input) {
 //? if >1.20.1 {
         /*return TextColor.parseColor(input).result().orElse(null);
-*///?} else {
+         *///?} else {
         TextColor color = TextColor.parseColor(input);
         if (color != null) return color;
         try {

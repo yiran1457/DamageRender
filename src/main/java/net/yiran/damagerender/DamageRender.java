@@ -42,7 +42,6 @@ public class DamageRender {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
         DamageColorManager.getInstance().load();
-
         ModLoadingContext.get().registerConfig(
                 ModConfig.Type.CLIENT,
                 ClientConfig.SPEC

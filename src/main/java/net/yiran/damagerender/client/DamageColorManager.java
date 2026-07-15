@@ -21,18 +21,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
- // 伤害类型 → 颜色映射的统一管理器（客户端单例）。
- //
- // <p>持有内存映射 {@link #map}（fastutil open-addressing，比 HashMap 快 ~20-30%）、
- // 默认颜色表、JSON 编解码器、以及文件持久化读写。所有颜色映射相关操作都集中在此类，避免逻辑分散。
- //
- // <h3>查找规则</h3>
- // {@link #getColor(String)} 按以下顺序查找：
- // <ol>
- //   <li>{@link #map} 中精确匹配 typeKey</li>
- //   <li>{@link #DEFAULT_COLOR} — 最终兜底（#FF5533）</li>
- // </ol>
- //
+/**
+ * 客户端伤害类型到颜色的映射及其 JSON 持久化。
+ * 未配置的类型统一回退到 {@link #DEFAULT_COLOR}。
+ */
 public class DamageColorManager {
 
     public static final Codec<Map<String, TextColor>> CODEC =
@@ -44,8 +36,7 @@ public class DamageColorManager {
     private static final Path COLOR_FILE_PATH =
             FMLPaths.CONFIGDIR.get().resolve("damagerender-damage-color.json");
 
-         // 默认伤害类型 → 十六进制颜色字符串（首次生成配置文件 / reload 兜底复用）。
-     //
+    /** 首次创建配置文件时写入的默认颜色。 */
     private static final Map<String, String> DEFAULT_DAMAGE_COLORS = Map.ofEntries(
             Map.entry("magic",        toHex(-7722014)),
             Map.entry("lightningBolt",toHex(-256)),
@@ -59,10 +50,10 @@ public class DamageColorManager {
             Map.entry("heal",         "#00FF00")
     );
 
-     // 当前颜色映射（open addressing，比 HashMap chaining 快 ~20-30%）。
+    /** 当前生效的颜色映射。 */
     private final Object2ObjectOpenHashMap<String, TextColor> map = new Object2ObjectOpenHashMap<>();
 
-    // ---- singleton ----------------------------------------------------------------
+    // ---- 单例 ----------------------------------------------------------------------
 
     public static DamageColorManager getInstance() {
         return INSTANCE;
@@ -70,18 +61,16 @@ public class DamageColorManager {
 
     private DamageColorManager() {}
 
-    // ---- 工具 --------------------------------------------------------------------
+    // ---- 工具 ----------------------------------------------------------------------
 
-     // 把 ARGB int 转为 {@code #RRGGBB} 大写十六进制字符串（忽略 alpha 通道）。
+    /** 将 ARGB 整数转换为忽略 alpha 的 {@code #RRGGBB} 字符串。 */
     static String toHex(int color) {
         return "#" + Integer.toHexString(color).substring(2).toUpperCase();
     }
 
-    // ---- 持久化 ------------------------------------------------------------------
+    // ---- 持久化 --------------------------------------------------------------------
 
-         // 从配置文件加载颜色映射：文件存在则解析应用，否则写入默认配置并应用。
-     // 供 {@code DamageRender} 构造与 {@link #reload()} 复用。
-     //
+    /** 加载配置；首次运行时写入并应用默认映射。 */
     public void load() {
         if (Files.exists(COLOR_FILE_PATH)) {
             try {
@@ -91,7 +80,6 @@ public class DamageColorManager {
             }
             return;
         }
-        // 首次运行：写入默认映射
         JsonObject json = defaultColorJson();
         try (Writer fileWriter = Files.newBufferedWriter(COLOR_FILE_PATH)) {
             JsonWriter jsonWriter = new JsonWriter(fileWriter);
@@ -105,14 +93,12 @@ public class DamageColorManager {
         apply(json);
     }
 
-     // 重新加载（Command reload 入口）。
+    /** 命令入口：重新读取颜色配置。 */
     public void reload() {
         load();
     }
 
-         // 把当前映射持久化到配置文件。set / remove 后自动调用。
-     // 编码失败时不写文件，仅打印错误。
-     //
+    /** 将当前映射写回配置文件；编码失败时保留原文件。 */
     public void save() {
         var result = CODEC.encodeStart(JsonOps.INSTANCE, map);
         var opt = result.result();
@@ -133,19 +119,16 @@ public class DamageColorManager {
         }
     }
 
-    // ---- JSON / 解析 -------------------------------------------------------------
+    // ---- JSON 解析 -----------------------------------------------------------------
 
-     // 构造默认颜色映射 JSON（键为伤害类型，值为 "#RRGGBB"）。
+    /** 构造默认颜色映射的 JSON 表示。 */
     public static JsonObject defaultColorJson() {
         JsonObject json = new JsonObject();
         DEFAULT_DAMAGE_COLORS.forEach(json::addProperty);
         return json;
     }
 
-         // 把颜色映射 JSON 解析并应用到当前 map。解析失败时不抛异常，保留旧映射。
-     //
-     // @return 是否解析成功
-     //
+    /** 解析并应用颜色映射；失败时保留旧映射。 */
     public boolean apply(JsonElement json) {
         if (json == null) return false;
         var parsed = CODEC.parse(JsonOps.INSTANCE, json).result();
@@ -154,41 +137,34 @@ public class DamageColorManager {
         return true;
     }
 
-    // ---- 查询 --------------------------------------------------------------------
+    // ---- 查询 ----------------------------------------------------------------------
 
-         // 根据伤害类型标识查找对应颜色。
-     //
-     // @param typeKey 伤害类型标识（damageTypeKey 或 msgId），如 "minecraft:in_fire"、"inFire"、"heal"
-     // @return 映射的颜色，未找到时返回 {@link #DEFAULT_COLOR}
-     //
+    /** 按伤害类型查找颜色，未命中时返回默认颜色。 */
     public TextColor getColor(String typeKey) {
         TextColor color = map.get(typeKey);
         return color != null ? color : DEFAULT_COLOR;
     }
 
-     // 返回当前颜色映射表（可变，用于遍历 / 展示）。
+    /** 返回可变映射，供命令展示和修改。 */
     public Object2ObjectOpenHashMap<String, TextColor> getMap() {
         return map;
     }
 
-    // ---- 修改 --------------------------------------------------------------------
+    // ---- 修改 ----------------------------------------------------------------------
 
-     // 整体替换映射表（不自动落盘，由 load / reload 调用）。
+    /** 整体替换内存映射，不自动写入文件。 */
     public void replaceAll(Map<String, TextColor> source) {
         map.clear();
         map.putAll(source);
     }
 
-     // 添加/覆盖一个类型颜色，并持久化。
+    /** 添加或覆盖一个类型颜色，并立即保存。 */
     public void put(String key, TextColor color) {
         map.put(key, color);
         save();
     }
 
-         // 移除一个类型颜色（恢复为默认/兜底），并持久化。
-     //
-     // @return 移除前该键是否存在
-     //
+    /** 移除一个类型颜色；成功移除时保存配置。 */
     public boolean remove(String key) {
         boolean existed = map.remove(key) != null;
         if (existed) save();

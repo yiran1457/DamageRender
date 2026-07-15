@@ -17,8 +17,8 @@ import net.yiran.damagerender.DamageRender;
 import java.util.UUID;
 
 /**
- * Buffers damage events until the end of the server tick and sends one batch per nearby player.
- * All access occurs on the server thread, so the fastutil collections need no synchronization.
+ * 缓冲一个服务端 tick 内的伤害事件，并按玩家可见范围批量发送。
+ * 所有访问都在服务端线程执行，因此 fastutil 容器无需额外同步。
  */
 public class ServerDamageInfoManager {
     public static final ServerDamageInfoManager instance = new ServerDamageInfoManager();

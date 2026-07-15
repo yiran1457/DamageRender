@@ -11,18 +11,13 @@ import net.minecraft.resources.ResourceLocation;
 //?}
 import net.yiran.damagerender.ClientConfig;
 
- // 使用纹理图集渲染伤害数字，替代 Font.drawInBatch。
- //
- // <p>纹理布局：0123456789. 共 11 个字符，每个 6×9 像素，总宽 66px。
- // 渲染时按字符查表获取 UV，逐字符发射四边形顶点。
- //
- // <p>使用的纹理由 {@link ClientConfig#TEXTURE} 决定，运行时可通过指令切换。
- // {@link RenderType#text(ResourceLocation)} 内部用 {@code Util.memoize} 按 ResourceLocation
- // 缓存 RenderType，因此每个纹理路径对应一个独立缓存实例，切换纹理只需换入不同的 ResourceLocation。
- //
+/**
+ * 使用 11 格数字纹理图集渲染伤害值，避免依赖字体绘制。
+ * 纹理由 {@link ClientConfig#TEXTURE} 决定，非法配置会回退到默认纹理。
+ */
 public class DamageNumberRenderer {
 
-     // 默认纹理路径（配置缺失或非法时兜底）。用 tryParse 而非构造，兼容 1.21.1（构造已 private）。
+    /** 默认数字纹理；使用 {@code tryParse} 兼容各版本的资源标识类型。 */
 //? if >1.21.1 {
     /*public static final Identifier DEFAULT_TEXTURE =
             Identifier.tryParse("damagerender:textures/damagefont/number_0.png");
@@ -35,10 +30,10 @@ public class DamageNumberRenderer {
     public static final int CHAR_HEIGHT = 9;
     public static final int CHAR_COUNT = 11; // 0-9 + '.'
 
-     // 字符 → 图集索引查找表，-1 表示无法渲染的字符。
+    /** ASCII 字符到图集索引的映射；{@code -1} 表示不支持。 */
     private static final byte[] CHAR_TO_INDEX = new byte[128];
 
-     // 顶点变换复用缓冲 [x,y,z]，由 {@link Mat4Util#transformVertex} 写入，避免逐顶点分配。
+    /** 复用的顶点坐标缓冲。 */
     private static final float[] TMP_VERTEX = new float[3];
 
     static {
@@ -51,12 +46,7 @@ public class DamageNumberRenderer {
         CHAR_TO_INDEX['.'] = 10;
     }
 
-         // 从配置解析当前伤害数字纹理 ResourceLocation。
-     //
-     // <p>配置值非法（如格式错误）时回退到 {@link #DEFAULT_TEXTURE}，避免运行时抛异常导致渲染崩溃。
-     //
-     // @return 当前生效的纹理 ResourceLocation
-     //
+    /** 解析配置中的纹理；格式无效时回退到默认纹理。 */
 //? if >1.21.1 {
     /*public static Identifier getTexture() {
 *///?} else {
@@ -71,10 +61,7 @@ public class DamageNumberRenderer {
         return parsed != null ? parsed : DEFAULT_TEXTURE;
     }
 
-         // 获取当前纹理对应的文字 RenderType。
-     //
-     // @return 与当前纹理绑定的 RenderType（POSITION_COLOR_TEX_LIGHTMAP，支持半透明和光照）
-     //
+    /** 返回当前纹理对应的文字渲染类型。 */
     public static RenderType getRenderType() {
 //? if >1.21.1 {
         /*return RenderTypes.text(getTexture());
@@ -83,17 +70,7 @@ public class DamageNumberRenderer {
 //?}
     }
 
-         // 使用纹理图集渲染一串伤害数字，顶点经 {@code matrix} 手写 fma 变换。
-     //
-     // @param matrix     16 元素列主序变换矩阵（由 {@link Mat4Util#mulViewTranslateBaseScale} 产出）
-     // @param consumer   顶点消费者（通过 bufferSource.getBuffer(RENDER_TYPE) 获取）
-     // @param text       要渲染的文本（仅支持 0-9 和 '.'）
-     // @param x          起始 X 偏移（像素，通常为居中偏移）
-     // @param y          起始 Y 偏移（像素）
-     // @param color      ARGB 颜色（含 alpha）
-     // @param packedLight 光照贴图值（通常为 LightTexture.FULL_BRIGHT）
-     // @return 渲染总宽度（像素），用于外部居中计算
-     //
+    /** 为每个支持的字符写入一个纹理四边形，并返回总宽度。 */
     public static float renderNumber(float[] matrix, VertexConsumer consumer,
                                      String text, float x, float y,
                                      int color, int packedLight) {
@@ -148,11 +125,7 @@ public class DamageNumberRenderer {
         return cursorX - x;
     }
 
-         // 计算文本在纹理图集中的像素宽度。
-     //
-     // @param text 要测量的文本
-     // @return 像素宽度（仅统计可渲染字符）
-     //
+    /** 返回图集中所有可渲染字符的总宽度。 */
     public static float getTextWidth(String text) {
         int width = 0;
         for (int i = 0; i < text.length(); i++) {

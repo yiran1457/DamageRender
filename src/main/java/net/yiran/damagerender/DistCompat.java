@@ -8,7 +8,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLEnvironment;
 *///?}
 
-/** Version bridge for the FML environment API used to detect the physical client. */
+/** 兼容不同 FML 环境 API 的客户端侧判断。 */
 public final class DistCompat {
     private DistCompat() {
     }

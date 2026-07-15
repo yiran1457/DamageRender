@@ -9,7 +9,7 @@ import net.yiran.damagerender.data.DamageInfoData;
 
 import java.util.List;
 
-/** Loader-independent client processing for decoded damage packets. */
+/** 与加载器无关的客户端伤害数据处理入口。 */
 public final class ClientDamagePacketHandler {
     private ClientDamagePacketHandler() {}
 

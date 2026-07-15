@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.yiran.damagerender.ClientConfig;
 
-/** Maintains active damage strings and constant-time merge indexes. */
+/** 维护活跃飘字及其常数时间合并索引。 */
 public class ClientDamageInfoManager {
     private static final ClientDamageInfoManager INSTANCE = new ClientDamageInfoManager();
     private static final String COMBINED_KEY = "combined";

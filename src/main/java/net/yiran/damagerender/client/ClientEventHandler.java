@@ -30,7 +30,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 //?}
 
-/** Client login synchronization and floating-number rendering. */
+/** 处理客户端登录同步与伤害飘字渲染。 */
 public class ClientEventHandler {
     private static final float[] VIEW_ARR = new float[16];
     private static final float[] BASE_RS_ARR = new float[16];

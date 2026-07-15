@@ -9,21 +9,41 @@ import net.minecraft.world.phys.Vec3;
 public record DamageInfoData(int entityId, String typeKey, Vec3 pos, double amount) {
 
     public static void toBytes(DamageInfoData data, FriendlyByteBuf buf) {
-        buf.writeVarInt(data.entityId);
-        buf.writeUtf(data.typeKey);
-        buf.writeDouble(data.pos.x);
-        buf.writeDouble(data.pos.y);
-        buf.writeDouble(data.pos.z);
-        buf.writeDouble(data.amount);
+        writeType(data, buf);
+        writePayload(data, buf);
     }
 
     public static DamageInfoData fromBytes(FriendlyByteBuf buf) {
-        int entityId = buf.readVarInt();
-        String typeKey = buf.readUtf();
-        Vec3 pos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
-        double amount = buf.readDouble();
-        return new DamageInfoData(entityId, typeKey, pos, amount);
+        TypeData type = readType(buf);
+        return readPayload(buf, buf.readVarInt(), type);
     }
+
+    static void writeType(DamageInfoData data, FriendlyByteBuf buf) {
+        buf.writeUtf(data.typeKey);
+    }
+
+    static TypeData readType(FriendlyByteBuf buf) {
+        return new TypeData(buf.readUtf());
+    }
+
+    static Object typeToken(DamageInfoData data) {
+        return data.typeKey;
+    }
+
+    static void writePayload(DamageInfoData data, FriendlyByteBuf buf) {
+        buf.writeVarInt(data.entityId);
+        buf.writeFloat((float) data.pos.x);
+        buf.writeFloat((float) data.pos.y);
+        buf.writeFloat((float) data.pos.z);
+        buf.writeFloat((float) data.amount);
+    }
+
+    static DamageInfoData readPayload(FriendlyByteBuf buf, int entityId, TypeData type) {
+        Vec3 pos = new Vec3(buf.readFloat(), buf.readFloat(), buf.readFloat());
+        return new DamageInfoData(entityId, type.typeKey, pos, buf.readFloat());
+    }
+
+    static record TypeData(String typeKey) {}
 
     public String damageTypeKey() {
         return typeKey;
@@ -49,23 +69,45 @@ public record DamageInfoData(int entityId, @Nullable ResourceLocation damageType
                              Vec3 pos, double amount) {
 
     public static void toBytes(DamageInfoData data, FriendlyByteBuf buf) {
-        buf.writeVarInt(data.entityId);
-        buf.writeNullable(data.damageTypeLocation, FriendlyByteBuf::writeResourceLocation);
-        buf.writeNullable(data.fallbackKey, FriendlyByteBuf::writeUtf);
-        buf.writeDouble(data.pos.x);
-        buf.writeDouble(data.pos.y);
-        buf.writeDouble(data.pos.z);
-        buf.writeDouble(data.amount);
+        writeType(data, buf);
+        writePayload(data, buf);
     }
 
     public static DamageInfoData fromBytes(FriendlyByteBuf buf) {
-        int entityId = buf.readVarInt();
-        ResourceLocation damageTypeLocation = buf.readNullable(FriendlyByteBuf::readResourceLocation);
-        String fallbackKey = buf.readNullable(FriendlyByteBuf::readUtf);
-        Vec3 pos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
-        double amount = buf.readDouble();
-        return new DamageInfoData(entityId, damageTypeLocation, fallbackKey, pos, amount);
+        TypeData type = readType(buf);
+        return readPayload(buf, buf.readVarInt(), type);
     }
+
+    static void writeType(DamageInfoData data, FriendlyByteBuf buf) {
+        buf.writeNullable(data.damageTypeLocation, FriendlyByteBuf::writeResourceLocation);
+        buf.writeNullable(data.fallbackKey, FriendlyByteBuf::writeUtf);
+    }
+
+    static TypeData readType(FriendlyByteBuf buf) {
+        return new TypeData(
+                buf.readNullable(FriendlyByteBuf::readResourceLocation),
+                buf.readNullable(FriendlyByteBuf::readUtf)
+        );
+    }
+
+    static Object typeToken(DamageInfoData data) {
+        return data.fallbackKey != null ? data.fallbackKey : data.damageTypeLocation;
+    }
+
+    static void writePayload(DamageInfoData data, FriendlyByteBuf buf) {
+        buf.writeVarInt(data.entityId);
+        buf.writeFloat((float) data.pos.x);
+        buf.writeFloat((float) data.pos.y);
+        buf.writeFloat((float) data.pos.z);
+        buf.writeFloat((float) data.amount);
+    }
+
+    static DamageInfoData readPayload(FriendlyByteBuf buf, int entityId, TypeData type) {
+        Vec3 pos = new Vec3(buf.readFloat(), buf.readFloat(), buf.readFloat());
+        return new DamageInfoData(entityId, type.damageTypeLocation, type.fallbackKey, pos, buf.readFloat());
+    }
+
+    static record TypeData(@Nullable ResourceLocation damageTypeLocation, @Nullable String fallbackKey) {}
 
     // 用于颜色映射和合并的稳定类型键。
     public String damageTypeKey() {
@@ -106,13 +148,13 @@ public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHold
                              Vec3 pos, double amount) {
 
     private static final StreamCodec<ByteBuf, Vec3> VEC_3_STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.DOUBLE,
-            Vec3::x,
-            ByteBufCodecs.DOUBLE,
-            Vec3::y,
-            ByteBufCodecs.DOUBLE,
-            Vec3::z,
-            Vec3::new
+            ByteBufCodecs.FLOAT,
+            vec -> (float) vec.x,
+            ByteBufCodecs.FLOAT,
+            vec -> (float) vec.y,
+            ByteBufCodecs.FLOAT,
+            vec -> (float) vec.z,
+            (x, y, z) -> new Vec3(x, y, z)
     );
     public static final StreamCodec<RegistryFriendlyByteBuf, DamageInfoData> STREAM_CODEC = StreamCodec.of(
             DamageInfoData::write,
@@ -120,21 +162,43 @@ public record DamageInfoData(int entityId, @Nullable Holder<DamageType> typeHold
     );
 
     private static void write(RegistryFriendlyByteBuf buf, DamageInfoData data) {
-        buf.writeVarInt(data.entityId);
-        FriendlyByteBuf.writeNullable(buf, data.typeHolder, DamageType.STREAM_CODEC);
-        FriendlyByteBuf.writeNullable(buf, data.fallbackKey, ByteBufCodecs.STRING_UTF8);
-        VEC_3_STREAM_CODEC.encode(buf, data.pos);
-        buf.writeDouble(data.amount);
+        writeType(data, buf);
+        writePayload(data, buf);
     }
 
     private static DamageInfoData read(RegistryFriendlyByteBuf buf) {
-        int entityId = buf.readVarInt();
-        Holder<DamageType> typeHolder = FriendlyByteBuf.readNullable(buf, DamageType.STREAM_CODEC);
-        String fallbackKey =  FriendlyByteBuf.readNullable(buf,ByteBufCodecs.STRING_UTF8);
-        Vec3 pos = VEC_3_STREAM_CODEC.decode(buf);
-        double amount = buf.readDouble();
-        return new DamageInfoData(entityId, typeHolder, fallbackKey, pos, amount);
+        TypeData type = readType(buf);
+        return readPayload(buf, buf.readVarInt(), type);
     }
+
+    static void writeType(DamageInfoData data, RegistryFriendlyByteBuf buf) {
+        FriendlyByteBuf.writeNullable(buf, data.typeHolder, DamageType.STREAM_CODEC);
+        FriendlyByteBuf.writeNullable(buf, data.fallbackKey, ByteBufCodecs.STRING_UTF8);
+    }
+
+    static TypeData readType(RegistryFriendlyByteBuf buf) {
+        return new TypeData(
+                FriendlyByteBuf.readNullable(buf, DamageType.STREAM_CODEC),
+                FriendlyByteBuf.readNullable(buf, ByteBufCodecs.STRING_UTF8)
+        );
+    }
+
+    static Object typeToken(DamageInfoData data) {
+        return data.fallbackKey != null ? data.fallbackKey : data.typeHolder;
+    }
+
+    static void writePayload(DamageInfoData data, RegistryFriendlyByteBuf buf) {
+        buf.writeVarInt(data.entityId);
+        VEC_3_STREAM_CODEC.encode(buf, data.pos);
+        buf.writeFloat((float) data.amount);
+    }
+
+    static DamageInfoData readPayload(RegistryFriendlyByteBuf buf, int entityId, TypeData type) {
+        return new DamageInfoData(entityId, type.typeHolder, type.fallbackKey,
+                VEC_3_STREAM_CODEC.decode(buf), buf.readFloat());
+    }
+
+    static record TypeData(@Nullable Holder<DamageType> typeHolder, @Nullable String fallbackKey) {}
 
     // 用于颜色映射和合并的稳定类型键。
     public String damageTypeKey() {

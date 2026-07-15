@@ -24,7 +24,8 @@ import net.yiran.damagerender.server.ServerEventHandler;
 public class DamageRender {
     public static final String MODID = "damagerender";
     public static SimpleChannel NETWORK;
-    private static final String PROTOCOL_VERSION = "1";
+    // Damage batches use a type dictionary and float payloads as of protocol 2.
+    private static final String PROTOCOL_VERSION = "2";
 
     @SuppressWarnings("removal")
     public DamageRender() {

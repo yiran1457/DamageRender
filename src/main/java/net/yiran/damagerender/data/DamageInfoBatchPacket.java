@@ -2,6 +2,7 @@
 package net.yiran.damagerender.data;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.yiran.damagerender.client.ClientDamagePacketHandler;
@@ -20,17 +21,42 @@ public class DamageInfoBatchPacket {
     }
 
     public static void toBytes(DamageInfoBatchPacket packet, FriendlyByteBuf buf) {
+        var typeIndexes = new Object2IntOpenHashMap<Object>();
+        typeIndexes.defaultReturnValue(-1);
+        var types = new ObjectArrayList<DamageInfoData>();
+        for (DamageInfoData data : packet.entries) {
+            Object type = DamageInfoData.typeToken(data);
+            if (typeIndexes.getInt(type) == -1) {
+                typeIndexes.put(type, types.size());
+                types.add(data);
+            }
+        }
+        buf.writeVarInt(types.size());
+        for (DamageInfoData type : types) {
+            DamageInfoData.writeType(type, buf);
+        }
         buf.writeVarInt(packet.entries.size());
         for (DamageInfoData data : packet.entries) {
-            DamageInfoData.toBytes(data, buf);
+            buf.writeVarInt(typeIndexes.getInt(DamageInfoData.typeToken(data)));
+            DamageInfoData.writePayload(data, buf);
         }
     }
 
     public static DamageInfoBatchPacket newInstance(FriendlyByteBuf buf) {
+        int typeCount = buf.readVarInt();
+        var types = new ObjectArrayList<DamageInfoData.TypeData>(typeCount);
+        for (int i = 0; i < typeCount; i++) {
+            types.add(DamageInfoData.readType(buf));
+        }
         int size = buf.readVarInt();
         List<DamageInfoData> entries = new ObjectArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            entries.add(DamageInfoData.fromBytes(buf));
+            int typeIndex = buf.readVarInt();
+            int entityId = buf.readVarInt();
+            if (typeIndex < 0 || typeIndex >= types.size()) {
+                throw new IllegalArgumentException("Invalid damage type index: " + typeIndex);
+            }
+            entries.add(DamageInfoData.readPayload(buf, entityId, types.get(typeIndex)));
         }
         return new DamageInfoBatchPacket(entries);
     }
@@ -45,6 +71,7 @@ public class DamageInfoBatchPacket {
 /*package net.yiran.damagerender.data;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -75,17 +102,42 @@ public record DamageInfoBatchPacket(List<DamageInfoData> entries) implements Cus
             StreamCodec.of(DamageInfoBatchPacket::write, DamageInfoBatchPacket::read);
 
     private static void write(RegistryFriendlyByteBuf buf, DamageInfoBatchPacket packet) {
+        var typeIndexes = new Object2IntOpenHashMap<Object>();
+        typeIndexes.defaultReturnValue(-1);
+        var types = new ObjectArrayList<DamageInfoData>();
+        for (DamageInfoData data : packet.entries) {
+            Object type = DamageInfoData.typeToken(data);
+            if (typeIndexes.getInt(type) == -1) {
+                typeIndexes.put(type, types.size());
+                types.add(data);
+            }
+        }
+        buf.writeVarInt(types.size());
+        for (DamageInfoData type : types) {
+            DamageInfoData.writeType(type, buf);
+        }
         buf.writeVarInt(packet.entries.size());
         for (DamageInfoData data : packet.entries) {
-            DamageInfoData.STREAM_CODEC.encode(buf, data);
+            buf.writeVarInt(typeIndexes.getInt(DamageInfoData.typeToken(data)));
+            DamageInfoData.writePayload(data, buf);
         }
     }
 
     private static DamageInfoBatchPacket read(RegistryFriendlyByteBuf buf) {
+        int typeCount = buf.readVarInt();
+        var types = new ObjectArrayList<DamageInfoData.TypeData>(typeCount);
+        for (int i = 0; i < typeCount; i++) {
+            types.add(DamageInfoData.readType(buf));
+        }
         int size = buf.readVarInt();
         List<DamageInfoData> entries = new ObjectArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            entries.add(DamageInfoData.STREAM_CODEC.decode(buf));
+            int typeIndex = buf.readVarInt();
+            int entityId = buf.readVarInt();
+            if (typeIndex < 0 || typeIndex >= types.size()) {
+                throw new IllegalArgumentException("Invalid damage type index: " + typeIndex);
+            }
+            entries.add(DamageInfoData.readPayload(buf, entityId, types.get(typeIndex)));
         }
         return new DamageInfoBatchPacket(List.copyOf(entries));
     }

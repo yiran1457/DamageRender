@@ -1,7 +1,7 @@
 package net.yiran.damagerender.server;
 
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,8 +13,6 @@ import net.yiran.damagerender.data.DamageInfoData;
 import net.minecraftforge.network.PacketDistributor;
 import net.yiran.damagerender.DamageRender;
 //?}
-
-import java.util.UUID;
 
 /**
  * 缓冲一个服务端 tick 内的伤害事件，并按玩家可见范围批量发送。
@@ -55,23 +53,19 @@ public class ServerDamageInfoManager {
             return;
         }
 
-        ServerPlayer[] playerArr = new ServerPlayer[playerCount];
-        Level[] playerLevels = new Level[playerCount];
-        UUID[] playerUuids = new UUID[playerCount];
-        int[] playerDistances = new int[playerCount];
+        var playersByLevel = new Object2ObjectOpenHashMap<Level, ObjectArrayList<PlayerTarget>>();
         for (int i = 0; i < playerCount; i++) {
             ServerPlayer player = players.get(i);
-            playerArr[i] = player;
 //? if =1.19.2 {
-            /*playerLevels[i] = player.getLevel();
+            /*Level level = player.getLevel();
 *///?} else {
-            playerLevels[i] = player.level();
+            Level level = player.level();
 //?}
-            playerUuids[i] = player.getUUID();
-            playerDistances[i] = getDistance(player.getStringUUID());
+            int distance = getDistance(player.getStringUUID());
+            playersByLevel.computeIfAbsent(level, key -> new ObjectArrayList<>())
+                    .add(new PlayerTarget(player, (double) distance * distance));
         }
 
-        var perPlayer = new Object2ObjectOpenHashMap<UUID, ObjectArrayList<DamageInfoData>>();
         for (int i = 0, len = pending.size(); i < len; i++) {
             PendingEntry entry = pending.get(i);
             LivingEntity entity = entry.entity;
@@ -80,29 +74,52 @@ public class ServerDamageInfoManager {
 *///?} else {
             Level level = entity.level();
 //?}
-            for (int j = 0; j < playerCount; j++) {
-                if (!playerLevels[j].equals(level)) continue;
-                if (playerArr[j].distanceTo(entity) < playerDistances[j]) {
-                    perPlayer.computeIfAbsent(playerUuids[j], key -> new ObjectArrayList<>())
-                            .add(entry.data);
+            var targets = playersByLevel.get(level);
+            if (targets == null) continue;
+            for (int j = 0, targetCount = targets.size(); j < targetCount; j++) {
+                PlayerTarget target = targets.get(j);
+                if (target.player.distanceToSqr(entity) < target.distanceSqr) {
+                    target.add(entry.data);
                 }
             }
         }
         pending.clear();
 
-        for (int i = 0; i < playerCount; i++) {
-            ObjectArrayList<DamageInfoData> entries = perPlayer.get(playerUuids[i]);
-            if (entries == null || entries.isEmpty()) continue;
+        for (var targets : playersByLevel.values()) {
+            for (int i = 0, targetCount = targets.size(); i < targetCount; i++) {
+                PlayerTarget target = targets.get(i);
+                if (target.entries == null) continue;
 
-            ServerPlayer target = playerArr[i];
-            DamageInfoBatchPacket packet = new DamageInfoBatchPacket(entries);
+                DamageInfoBatchPacket packet = new DamageInfoBatchPacket(target.entries);
 //? if forge {
-            DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(() -> target), packet);
+                DamageRender.NETWORK.send(PacketDistributor.PLAYER.with(target::player), packet);
 //?} else {
-            /*target.connection.send(packet);
+                /*target.player.connection.send(packet);
 *///?}
+            }
         }
     }
 
     private record PendingEntry(LivingEntity entity, DamageInfoData data) {}
+
+    /** Per-tick recipient state; the payload list is allocated only when it receives an event. */
+    private static final class PlayerTarget {
+        private final ServerPlayer player;
+        private final double distanceSqr;
+        private ObjectArrayList<DamageInfoData> entries;
+
+        private PlayerTarget(ServerPlayer player, double distanceSqr) {
+            this.player = player;
+            this.distanceSqr = distanceSqr;
+        }
+
+        private void add(DamageInfoData data) {
+            if (entries == null) entries = new ObjectArrayList<>();
+            entries.add(data);
+        }
+
+        private ServerPlayer player() {
+            return player;
+        }
+    }
 }

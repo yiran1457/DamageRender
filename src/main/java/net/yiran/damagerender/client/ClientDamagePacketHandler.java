@@ -16,9 +16,10 @@ public final class ClientDamagePacketHandler {
     public static void handle(DamageInfoData data) {
         double minValue = ClientConfig.MIN_VALUE_DISPLAY.get();
         boolean showHeal = ClientConfig.SHOW_HEAL_NUMBERS.get();
-        if (!shouldRender(data, minValue, showHeal)) return;
+        String typeKey = data.damageTypeKey();
+        if (!shouldRender(data.amount(), typeKey, minValue, showHeal)) return;
 
-        ClientDamageInfoManager.getInstance().add(toDamageString(data));
+        ClientDamageInfoManager.getInstance().add(toDamageString(data, typeKey, resolveColor(data, typeKey)));
     }
 
     public static void handleBatch(List<DamageInfoData> entries) {
@@ -28,8 +29,9 @@ public final class ClientDamagePacketHandler {
 
         if (!ClientConfig.ENABLE_COMBINE_STRING.get()) {
             for (DamageInfoData data : entries) {
-                if (shouldRender(data, minValue, showHeal)) {
-                    manager.add(toDamageString(data));
+                String typeKey = data.damageTypeKey();
+                if (shouldRender(data.amount(), typeKey, minValue, showHeal)) {
+                    manager.add(toDamageString(data, typeKey, resolveColor(data, typeKey)));
                 }
             }
             return;
@@ -37,26 +39,21 @@ public final class ClientDamagePacketHandler {
 
         var mergeMap = new Int2ObjectOpenHashMap<Object2ObjectOpenHashMap<String, MergedEntry>>();
         for (DamageInfoData data : entries) {
-            if (!shouldRender(data, minValue, showHeal)) continue;
+            String typeKey = data.damageTypeKey();
+            if (!shouldRender(data.amount(), typeKey, minValue, showHeal)) continue;
 
             int entityId = data.entityId();
-            String typeKey = data.damageTypeKey();
             var typeMap = mergeMap.computeIfAbsent(entityId, key -> new Object2ObjectOpenHashMap<>());
             MergedEntry existing = typeMap.get(typeKey);
             if (existing == null) {
                 typeMap.put(typeKey, new MergedEntry(
                         data.amount(),
                         data.pos(),
-                        resolveColor(data),
+                        resolveColor(data, typeKey),
                         0
                 ));
             } else {
-                typeMap.put(typeKey, new MergedEntry(
-                        existing.amount() + data.amount(),
-                        existing.pos(),
-                        existing.color(),
-                        existing.count() + 1
-                ));
+                existing.add(data.amount());
             }
         }
 
@@ -64,43 +61,59 @@ public final class ClientDamagePacketHandler {
             int entityId = entityEntry.getIntKey();
             for (var typeEntry : entityEntry.getValue().object2ObjectEntrySet()) {
                 MergedEntry merged = typeEntry.getValue();
-                Vec3 pos = merged.pos();
+                Vec3 pos = merged.pos;
                 manager.add(new DamageString(
                         entityId,
                         (float) pos.x, (float) pos.y, (float) pos.z,
-                        (float) merged.amount(),
-                        merged.color(),
+                        (float) merged.amount,
+                        merged.color,
                         typeEntry.getKey(),
-                        merged.count()
+                        merged.count
                 ));
             }
         }
     }
 
-    private static boolean shouldRender(DamageInfoData data, double minValue, boolean showHeal) {
-        return Math.abs(data.amount()) >= minValue
-                && (showHeal || !"heal".equals(data.damageTypeKey()));
+    private static boolean shouldRender(double amount, String typeKey, double minValue, boolean showHeal) {
+        return Math.abs(amount) >= minValue && (showHeal || !"heal".equals(typeKey));
     }
 
-    private static DamageString toDamageString(DamageInfoData data) {
+    private static DamageString toDamageString(DamageInfoData data, String typeKey, int color) {
         Vec3 pos = data.pos();
         return new DamageString(
                 data.entityId(),
                 (float) pos.x, (float) pos.y, (float) pos.z,
                 (float) data.amount(),
-                resolveColor(data),
-                data.damageTypeKey()
+                color,
+                typeKey
         );
     }
 
-    private static int resolveColor(DamageInfoData data) {
+    private static int resolveColor(DamageInfoData data, String typeKey) {
         DamageColorManager manager = DamageColorManager.getInstance();
-        TextColor color = manager.getColor(data.damageTypeKey());
+        TextColor color = manager.getColor(typeKey);
         if (color == DamageColorManager.DEFAULT_COLOR) {
             color = manager.getColor(data.msgId());
         }
         return color.getValue();
     }
 
-    private record MergedEntry(double amount, Vec3 pos, int color, int count) {}
+    private static final class MergedEntry {
+        private double amount;
+        private final Vec3 pos;
+        private final int color;
+        private int count;
+
+        private MergedEntry(double amount, Vec3 pos, int color, int count) {
+            this.amount = amount;
+            this.pos = pos;
+            this.color = color;
+            this.count = count;
+        }
+
+        private void add(double additional) {
+            amount += additional;
+            count++;
+        }
+    }
 }

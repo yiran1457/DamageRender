@@ -112,6 +112,7 @@ tasks.named<Jar>("jar") {
             ),
         )
     }
+    finalizedBy("reobfJar")
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -124,8 +125,11 @@ tasks.named("createMinecraftArtifacts") {
 
 tasks.register<Copy>("buildAndCollect") {
     group = "build"
-    description = "Builds mod jars and copies results to root build/libs/{mod version}/"
-    dependsOn("build")
-    from(tasks.named<Jar>("jar").flatMap { it.archiveFile })
+    description = "Builds reobfuscated mod jars and copies them to root build/libs/{mod version}/"
+    val reobfJar = tasks.named("reobfJar")
+    dependsOn(reobfJar)
+    // ModDev's `jar` task writes the named/dev artifact to build/devlibs. Publish the
+    // reobfuscated task output instead, otherwise the collected Forge jar cannot run.
+    from(reobfJar.map { it.outputs.files })
     into(rootProject.layout.buildDirectory.dir("libs/$modVersion"))
 }

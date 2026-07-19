@@ -240,7 +240,10 @@ public class DamageString {
         if (life <= 0 || (this.color >>> 24) == 0) return;
 
         float shrink = (life < SHRINK_DURATION) ? (life * 0.5f + 3) / (SHRINK_DURATION + 3) : 1f;
-        float s = shrink * (mergeScale + baseScale + mergeBounceScale - 1);
+        float combinedScale = Math.min(
+                mergeScale + baseScale + mergeBounceScale - 1f,
+                ClientConfig.MAX_COMBINED_SCALE.get().floatValue());
+        float s = shrink * combinedScale;
 
         Mat4Util.mulViewTranslateBaseScale(TMP_MATRIX, viewMatrix, baseRS, x, y, z, s);
 

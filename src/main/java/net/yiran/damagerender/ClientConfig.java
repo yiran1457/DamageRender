@@ -18,6 +18,7 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_ENTITY;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
+    public static final ForgeConfigSpec.ConfigValue<Double> MAX_COMBINED_SCALE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> MERGE_RESET_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_BASE_SCALE_LOGARITHM;
     public static final ForgeConfigSpec.ConfigValue<Double> BASE_SCALE_LOG_BASE;
@@ -36,6 +37,7 @@ public class ClientConfig {
     public static final ModConfigSpec.ConfigValue<Boolean> ENABLE_COMBINE_ENTITY;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
+    public static final ModConfigSpec.ConfigValue<Double> MAX_COMBINED_SCALE;
     public static final ModConfigSpec.ConfigValue<Boolean> MERGE_RESET_LIFE;
     public static final ModConfigSpec.ConfigValue<Boolean> ENABLE_BASE_SCALE_LOGARITHM;
     public static final ModConfigSpec.ConfigValue<Double> BASE_SCALE_LOG_BASE;
@@ -68,6 +70,10 @@ public class ClientConfig {
                 .comment("伤害数字合并时的尺寸放大上限（每次合并 +1%，达到此值后不再放大）",
                         "1.0 表示不放大，默认 2.0 即最多放大到 2 倍")
                 .defineInRange("mergeScaleMax", 2.0, 1.0, 10.0);
+        MAX_COMBINED_SCALE = BUILDER
+                .comment("伤害数字最终组合缩放上限（合并缩放、基础对数缩放和合并弹跳缩放之和）",
+                        "淡出时的缩小倍率会在限制后继续生效")
+                .defineInRange("maxCombinedScale", 10.0, 1.0, 100.0);
         MERGE_RESET_LIFE = BUILDER
                 .comment("合并伤害时是否重置飘字存活时间",
                         "true：每次合并恢复为完整存活时间；false：保持当前剩余时间")

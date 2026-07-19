@@ -35,6 +35,7 @@ All display settings are client-side. Change them in the mod configuration scree
 | `enableCombineEntity` | `false` | Merges damage for the same entity into one number. |
 | `enableBaseScaleLogarithm` | `true` | Enables logarithmic base scaling based on damage value. |
 | `baseScaleLogBase` | `10.0` | Logarithm base for base scaling; range: `1.01` to `10,000,000`. |
+| `maxCombinedScale` | `10.0` | Maximum combined scale from merge, logarithmic base, and merge-bounce scaling; range: `1.0` to `100.0`. The fade-out shrink still applies after this cap. |
 | `initialUpwardSpeed` | `0.20` | Initial vertical velocity of a new number; positive rises, negative falls; range: `-10.0` to `10.0`. |
 | `texture` | bundled number texture | Resource location of the number atlas. |
 
@@ -43,6 +44,7 @@ Examples:
 ```mcfunction
 /damagerender enableBaseScaleLogarithm false
 /damagerender baseScaleLogBase 1000
+/damagerender maxCombinedScale 6
 /damagerender initialUpwardSpeed 0.35
 /damagerender setDamageColor magic #AA55FF
 ```

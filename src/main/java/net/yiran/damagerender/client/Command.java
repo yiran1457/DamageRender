@@ -167,6 +167,24 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("maxCombinedScale")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(1.0, 100.0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.MAX_COMBINED_SCALE.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 maxCombinedScale 设置为 : " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.MAX_COMBINED_SCALE.get();
+                                            sendSuccess(ctx.getSource(), "配置项 maxCombinedScale 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("mergeResetLife")
                                         .then(
                                                 Commands.argument("value", BoolArgumentType.bool())

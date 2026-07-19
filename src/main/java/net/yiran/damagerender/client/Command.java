@@ -185,9 +185,27 @@ public class Command {
                                         })
                         )
                         .then(
+                                Commands.literal("enableBaseScaleLogarithm")
+                                        .then(
+                                                Commands.argument("value", BoolArgumentType.bool())
+                                                        .executes(ctx -> {
+                                                            boolean value = BoolArgumentType.getBool(ctx, "value");
+                                                            ClientConfig.ENABLE_BASE_SCALE_LOGARITHM.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 enableBaseScaleLogarithm 设置为: " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            boolean value = ClientConfig.ENABLE_BASE_SCALE_LOGARITHM.get();
+                                            sendSuccess(ctx.getSource(), "配置项 enableBaseScaleLogarithm 值为: " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
                                 Commands.literal("baseScaleLogBase")
                                         .then(
-                                                Commands.argument("value", DoubleArgumentType.doubleArg(1.01, 32768.0))
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(1.01, 10_000_000.0))
                                                         .executes(ctx -> {
                                                             double value = DoubleArgumentType.getDouble(ctx, "value");
                                                             ClientConfig.BASE_SCALE_LOG_BASE.set(value);
@@ -200,6 +218,24 @@ public class Command {
                                         .executes(ctx -> {
                                             double value = ClientConfig.BASE_SCALE_LOG_BASE.get();
                                             sendSuccess(ctx.getSource(), "配置项 baseScaleLogBase 值为 : " + value);
+                                            return 1;
+                                        })
+                        )
+                        .then(
+                                Commands.literal("initialUpwardSpeed")
+                                        .then(
+                                                Commands.argument("value", DoubleArgumentType.doubleArg(-10.0, 10.0))
+                                                        .executes(ctx -> {
+                                                            double value = DoubleArgumentType.getDouble(ctx, "value");
+                                                            ClientConfig.INITIAL_UPWARD_SPEED.set(value);
+                                                            ClientConfig.SPEC.save();
+                                                            sendSuccess(ctx.getSource(), "配置项 initialUpwardSpeed 设置为: " + value);
+                                                            return 1;
+                                                        })
+                                        )
+                                        .executes(ctx -> {
+                                            double value = ClientConfig.INITIAL_UPWARD_SPEED.get();
+                                            sendSuccess(ctx.getSource(), "配置项 initialUpwardSpeed 值为: " + value);
                                             return 1;
                                         })
                         )

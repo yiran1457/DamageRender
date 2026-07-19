@@ -23,7 +23,6 @@ public class DamageString {
     private float halfWidth;
     private float life;
     private float maxLife;
-    private static final float INITIAL_UPWARD_SPEED = 0.20f;
     /** 所有飘字共用的基础缩放。 */
     public static final float RENDER_SCALE = 0.04f;
     /** 每次合并伤害时使用的缩放倍率。 */
@@ -77,7 +76,7 @@ public class DamageString {
 
         this.vX = (float) (Math.random() - 0.5) * HORIZONTAL_SPEED;
         this.vZ = (float) (Math.random() - 0.5) * HORIZONTAL_SPEED;
-        this.vY = INITIAL_UPWARD_SPEED;
+        this.vY = ClientConfig.INITIAL_UPWARD_SPEED.get().floatValue();
 
         this.life = ClientConfig.DAMAGE_STRING_LIFE.get();
         this.maxLife = this.life;
@@ -198,7 +197,9 @@ public class DamageString {
         }
         // 使用图集宽度而非游戏字体度量计算居中偏移。
         this.halfWidth = -DamageNumberRenderer.getTextWidth(this.displayText) / 2f;
-        this.baseScale = (float) Math.log(amount) * invLogBase;
+        this.baseScale = ClientConfig.ENABLE_BASE_SCALE_LOGARITHM.get()
+                ? (float) Math.log(amount) * invLogBase
+                : 0f;
     }
 
     private void update(float partialTick, float drag, float bounceDecay) {

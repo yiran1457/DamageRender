@@ -19,7 +19,9 @@ public class ClientConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ForgeConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
     public static final ForgeConfigSpec.ConfigValue<Boolean> MERGE_RESET_LIFE;
+    public static final ForgeConfigSpec.ConfigValue<Boolean> ENABLE_BASE_SCALE_LOGARITHM;
     public static final ForgeConfigSpec.ConfigValue<Double> BASE_SCALE_LOG_BASE;
+    public static final ForgeConfigSpec.ConfigValue<Double> INITIAL_UPWARD_SPEED;
     public static final ForgeConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
     public static final ForgeConfigSpec.ConfigValue<String> TEXTURE;
@@ -35,7 +37,9 @@ public class ClientConfig {
     public static final ModConfigSpec.ConfigValue<Double> MERGE_MAX_AGE;
     public static final ModConfigSpec.ConfigValue<Double> MERGE_SCALE_MAX;
     public static final ModConfigSpec.ConfigValue<Boolean> MERGE_RESET_LIFE;
+    public static final ModConfigSpec.ConfigValue<Boolean> ENABLE_BASE_SCALE_LOGARITHM;
     public static final ModConfigSpec.ConfigValue<Double> BASE_SCALE_LOG_BASE;
+    public static final ModConfigSpec.ConfigValue<Double> INITIAL_UPWARD_SPEED;
     public static final ModConfigSpec.ConfigValue<Integer> DAMAGE_STRING_LIFE;
     public static final ModConfigSpec.ConfigValue<Boolean> SHOW_HEAL_NUMBERS;
     public static final ModConfigSpec.ConfigValue<String> TEXTURE;
@@ -68,10 +72,16 @@ public class ClientConfig {
                 .comment("合并伤害时是否重置飘字存活时间",
                         "true：每次合并恢复为完整存活时间；false：保持当前剩余时间")
                 .define("mergeResetLife", true);
+        ENABLE_BASE_SCALE_LOGARITHM = BUILDER
+                .comment("是否启用伤害数字基础缩放的对数计算；关闭后仅保留合并缩放和动画缩放")
+                .define("enableBaseScaleLogarithm", true);
         BASE_SCALE_LOG_BASE = BUILDER
                 .comment("伤害数字基础缩放的对数底数",
                         "底数越大，大伤害数字的缩放增长越慢；底数越小增长越快")
-                .defineInRange("baseScaleLogBase", 10.0, 1.01, 32768);
+                .defineInRange("baseScaleLogBase", 10.0, 1.01, 10_000_000.0);
+        INITIAL_UPWARD_SPEED = BUILDER
+                .comment("伤害数字生成时的初始纵向速度；正数向上，负数向下")
+                .defineInRange("initialUpwardSpeed", 0.20, -10.0, 10.0);
         DAMAGE_STRING_LIFE = BUILDER
                 .comment("伤害数字存活时间（tick）")
                 .defineInRange("damageStringLife", 30, 5, 600);
